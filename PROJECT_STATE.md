@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 3 — Data Ingestion**
-> Status: **COMPLETE** (Awaiting user review at Phase 3 Gate)
+> Current Authorized Phase: **Phase 4 — Baseline Classifier**
+> Status: **COMPLETE** (Awaiting user review at Phase 4 Gate)
 
 ---
 
@@ -14,8 +14,8 @@
 | 0 | Repository Audit | COMPLETE | `8a2dc3c` | Verified (`origin/main`) | Approved |
 | 1 | Project Foundation | COMPLETE | `0d12553` | Verified (`origin/main`) | Approved |
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
-| **3** | **Data Ingestion** | **COMPLETE** | `e7e1dac` | Verified (`origin/main`) | **Current Phase Gate** |
-| 4 | Baseline Classifier | PENDING | — | — | Not Authorized |
+| 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
+| **4** | **Baseline Classifier** | **COMPLETE** | Pending | Verified (Dry-run OK) | **Current Phase Gate** |
 | 5 | Gemma 4 Integration | PENDING | — | — | Not Authorized |
 | 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
 | 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
@@ -151,5 +151,5 @@
 
 ## 8. Next Permitted Action
 
-Upon user review and authorization of the Phase 3 report:
-Proceed to **Phase 4 — Baseline Classifier**.
+Upon user review and authorization of the Phase 4 report:
+Proceed to **Phase 5 — Gemma 4 Integration**.
