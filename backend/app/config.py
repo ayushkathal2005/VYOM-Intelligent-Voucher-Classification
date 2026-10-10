@@ -17,12 +17,17 @@ class Settings(BaseSettings):
     # AI Model Settings
     gemini_api_key: Optional[str] = Field(default=None, description="Google Gemini API key")
     gemini_model: str = Field(default="gemma-4-26b-a4b-it", description="Designated Gemma 4 model identifier")
+    use_mock_llm: bool = Field(default=False, description="Explicit flag to force deterministic mock LLM adapter")
+    confidence_review_threshold: float = Field(
+        default=0.75, description="Confidence threshold below which human review is recommended"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
 
     @property
     def is_gemini_configured(self) -> bool:

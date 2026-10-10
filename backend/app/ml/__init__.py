@@ -22,6 +22,16 @@ from app.ml.fixtures.reference_workbook_fixture import (
     MISSING_REFERENCE_CATEGORIES,
 )
 
+from app.ml.gemma import (
+    GemmaVoucherPrediction,
+    GemmaClassificationResult,
+    GEMMA_SYSTEM_INSTRUCTION,
+    build_gemma_classification_prompt,
+    MockGemmaAdapter,
+    GemmaClassifier,
+    GemmaConfigurationError,
+)
+
 __all__ = [
     "AUTHORITATIVE_VOUCHER_LABELS",
     "LABEL_TO_ID",
@@ -38,5 +48,13 @@ __all__ = [
     "get_missing_categories_synthetic_fixtures",
     "run_reference_cv_benchmark",
     "MISSING_REFERENCE_CATEGORIES",
+    "GemmaVoucherPrediction",
+    "GemmaClassificationResult",
+    "GEMMA_SYSTEM_INSTRUCTION",
+    "build_gemma_classification_prompt",
+    "MockGemmaAdapter",
+    "GemmaClassifier",
+    "GemmaConfigurationError",
 ]
+
 

@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 4 — Baseline Classifier**
-> Status: **COMPLETE** (Awaiting user review at Phase 4 Gate)
+> Current Authorized Phase: **Phase 5 — Gemma 4 Integration**
+> Status: **COMPLETE** (Awaiting user review at Phase 5 Gate)
 
 ---
 
@@ -15,14 +15,16 @@
 | 1 | Project Foundation | COMPLETE | `0d12553` | Verified (`origin/main`) | Approved |
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
 | 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
-| **4** | **Baseline Classifier** | **COMPLETE** | `faeca77` | Verified (`origin/main`) | **Current Phase Gate** |
-| 5 | Gemma 4 Integration | PENDING | — | — | Not Authorized |
+| 4 | Baseline Classifier | COMPLETE | `89e42c6` | Verified (`origin/main`) | Approved |
+| **5** | **Gemma 4 Integration** | **COMPLETE** | `fdafebf` | Verified (`origin/main`) | **Current Phase Gate** |
 | 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
+
 | 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
 | 8 | Backend API | PENDING | — | — | Not Authorized |
 | 9 | Connected Dashboard | PENDING | — | — | Not Authorized |
 | 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
+
 
 ---
 
@@ -172,8 +174,28 @@
 
 ---
 
-## 9. Next Permitted Action
+## 9. Phase 5 — Gemma 4 Integration Summary
 
-Upon user authorization of the Reference Dataset Report & Phase Gates:
-Proceed to **Phase 5 — Gemma 4 Integration**.
+- **Designated AI Model**: Gemma 4 (`gemma-4-26b-a4b-it`) accessed through the official `google-genai` SDK (`google-genai==2.29.0`).
+- **Pydantic Response Validation**:
+  - `GemmaVoucherPrediction`: Strictly validates that category matches one of the 27 authoritative labels. Normalizes case/spacing variations and bounds confidence scores [0.0, 1.0].
+  - `GemmaClassificationResult`: Captures row ID, model identifier, latency in ms, token usage metrics, and audit flags.
+- **Auditable Mock Adapter**:
+  - `MockGemmaAdapter` provides deterministic rule-and-semantic classification for offline development and CI before user supplies `GEMINI_API_KEY`.
+  - Truthfulness guarantee: Explicitly records `is_mock=True` and `model_name="mock-gemma-4-adapter"`. Never misrepresents mock predictions as live inference.
+- **Client & Fallback Resilience**:
+  - `GemmaClassifier` dynamically activates live Gemini generation when `GEMINI_API_KEY` is present.
+  - Automatically activates mock mode when API key is absent or when `use_mock_llm=True`.
+  - Strict leakage check: Prompts use `compact_representation()` and never inject `Voucher Category` or ground truth into the prompt.
+- **Test Suite Expansion**:
+  - Added `backend/tests/test_gemma.py` (11 unit/integration tests).
+  - Full test suite now passes: **41 passed, 0 failed** across ingestion, baselines, reference workbook, and Gemma 4 modules.
+
+---
+
+## 10. Next Permitted Action
+
+Upon user authorization of the Phase 5 report:
+Proceed to **Phase 6 — Accounting Signals & Semantic Retrieval**.
+
 
