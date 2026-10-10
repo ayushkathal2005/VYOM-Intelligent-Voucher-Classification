@@ -48,3 +48,9 @@ def health_check():
         "gemini_configured": settings.is_gemini_configured,
         "gemini_model": settings.gemini_model,
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=False)
+
