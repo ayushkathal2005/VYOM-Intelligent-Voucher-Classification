@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { WorkspaceProvider } from "@/context/WorkspaceContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,7 +35,9 @@ export default function RootLayout({
       className={`${serifFont.variable} ${sansFont.variable} dark`}
     >
       <body className="min-h-screen bg-[#050505] text-[#F4EBDD] font-sans antialiased selection:bg-[#F0AE2C]/30 selection:text-[#F4EBDD]">
-        {children}
+        <WorkspaceProvider>
+          {children}
+        </WorkspaceProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
+import { CategoryTooltip } from "./dashboard/CategoryTooltip";
 
 interface HealthStatus {
   status: string;
@@ -279,9 +280,11 @@ export function ProductIntroSection() {
                       className="text-xs text-[#A69A87] flex items-center gap-2"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-[#F0AE2C]/60" />
-                      <span className="hover:text-[#F4EBDD] transition-colors">
-                        {cls}
-                      </span>
+                      <CategoryTooltip category={cls}>
+                        <span className="hover:text-[#F0AE2C] transition-colors cursor-help">
+                          {cls}
+                        </span>
+                      </CategoryTooltip>
                     </li>
                   ))}
                 </ul>

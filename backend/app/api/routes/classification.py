@@ -25,8 +25,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.ml.fast_classifier import FastVoucherClassifier
 from app.ml.guardrails.models import TriageDecision
 
-def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Optional[bool], mode: Optional[str] = None):
-    """Background task processing all transactions in a dataset across Fast, AI, or Hybrid mode."""
+def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Optional[bool], mode: Optional[str] = None, start_row: int = 1):
+    """Background task processing all transactions in a dataset across Fast, AI, or Hybrid mode with cooperative pause and cancel."""
     ds = dataset_storage.get_dataset(dataset_id)
     if not ds:
         dataset_storage.update_job_progress(job_id, 0, status="FAILED", error_message="Dataset not found.")
@@ -41,7 +41,14 @@ def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Option
             # Fast Mode: Ultra-low latency calibrated Linear SVM with full deterministic guardrails
             clf = FastVoucherClassifier()
             pipeline = GuardrailsPipeline(classifier=clf)
-            for idx, t in enumerate(txns, start=1):
+            for idx in range(start_row, total + 1):
+                ctrl = dataset_storage.check_job_control(job_id)
+                if ctrl == "CANCELLED":
+                    logger.info("Batch classification job '%s' cancelled at row %d/%d.", job_id, idx - 1, total)
+                    dataset_storage.update_job_progress(job_id, processed_rows=idx - 1, status="CANCELLED")
+                    return
+
+                t = txns[idx - 1]
                 try:
                     result, evaluation = pipeline.evaluate_and_classify(t)
                 except Exception as row_err:
@@ -61,7 +68,14 @@ def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Option
             ai_clf = GemmaClassifier(force_mock=use_mock) if use_mock is not None else GemmaClassifier()
             ai_pipe = GuardrailsPipeline(classifier=ai_clf)
 
-            for idx, t in enumerate(txns, start=1):
+            for idx in range(start_row, total + 1):
+                ctrl = dataset_storage.check_job_control(job_id)
+                if ctrl == "CANCELLED":
+                    logger.info("Batch classification job '%s' cancelled at row %d/%d.", job_id, idx - 1, total)
+                    dataset_storage.update_job_progress(job_id, processed_rows=idx - 1, status="CANCELLED")
+                    return
+
+                t = txns[idx - 1]
                 try:
                     result, evaluation = fast_pipe.evaluate_and_classify(t)
                     if evaluation.triage_decision != TriageDecision.AUTO_VERIFIED or evaluation.calibrated_confidence < 0.85:
@@ -83,40 +97,25 @@ def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Option
             # AI Mode: Full Gemma 4 prompt synthesis & LLM reasoning
             classifier = GemmaClassifier(force_mock=use_mock) if use_mock is not None else GemmaClassifier()
             pipeline = GuardrailsPipeline(classifier=classifier)
-            max_workers = 4 if not classifier.is_mock else 1
 
-            if max_workers > 1:
-                completed_count = 0
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    future_to_txn = {
-                        executor.submit(pipeline.evaluate_and_classify, t): t
-                        for t in txns
-                    }
-                    for future in as_completed(future_to_txn):
-                        t = future_to_txn[future]
-                        try:
-                            result, evaluation = future.result()
-                        except Exception as row_err:
-                            logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
-                            fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
-                            result, evaluation = fallback_pipe.evaluate_and_classify(t)
-                            evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
+            for idx in range(start_row, total + 1):
+                ctrl = dataset_storage.check_job_control(job_id)
+                if ctrl == "CANCELLED":
+                    logger.info("Batch classification job '%s' cancelled at row %d/%d.", job_id, idx - 1, total)
+                    dataset_storage.update_job_progress(job_id, processed_rows=idx - 1, status="CANCELLED")
+                    return
 
-                        dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
-                        completed_count += 1
-                        dataset_storage.update_job_progress(job_id, processed_rows=completed_count, status="PROCESSING")
-            else:
-                for idx, t in enumerate(txns, start=1):
-                    try:
-                        result, evaluation = pipeline.evaluate_and_classify(t)
-                    except Exception as row_err:
-                        logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
-                        fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
-                        result, evaluation = fallback_pipe.evaluate_and_classify(t)
-                        evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
+                t = txns[idx - 1]
+                try:
+                    result, evaluation = pipeline.evaluate_and_classify(t)
+                except Exception as row_err:
+                    logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
+                    fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
+                    result, evaluation = fallback_pipe.evaluate_and_classify(t)
+                    evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
 
-                    dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
-                    dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
+                dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
+                dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
 
         dataset_storage.update_job_progress(job_id, processed_rows=total, status="COMPLETED")
         logger.info("Batch classification job '%s' (mode: %s) completed successfully (%d rows).", job_id, clean_mode, total)
@@ -188,6 +187,7 @@ def start_batch_classification(payload: BatchClassifyRequest, background_tasks: 
         dataset_id=payload.dataset_id,
         use_mock=payload.use_mock,
         mode=clean_mode,
+        start_row=1,
     )
 
     return BatchClassifyJobResponse(
@@ -222,3 +222,45 @@ def get_job_status(job_id: str):
         completed_at=job["completed_at"],
         error_message=job["error_message"],
     )
+
+
+@router.post("/jobs/{job_id}/pause", response_model=BatchClassifyJobResponse)
+@router.post("/batch/{job_id}/pause", response_model=BatchClassifyJobResponse)
+def pause_classification_job(job_id: str):
+    """Pause an active classification job cooperatively at transaction boundary."""
+    job = dataset_storage.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+    if job["status"] not in ("PROCESSING", "QUEUED"):
+        return BatchClassifyJobResponse(**job)
+
+    updated = dataset_storage.pause_job(job_id)
+    return BatchClassifyJobResponse(**updated)
+
+
+@router.post("/jobs/{job_id}/resume", response_model=BatchClassifyJobResponse)
+@router.post("/batch/{job_id}/resume", response_model=BatchClassifyJobResponse)
+def resume_classification_job(job_id: str, background_tasks: BackgroundTasks):
+    """Resume a paused classification job."""
+    job = dataset_storage.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+    if job["status"] != "PAUSED":
+        return BatchClassifyJobResponse(**job)
+
+    updated = dataset_storage.resume_job(job_id)
+    return BatchClassifyJobResponse(**updated)
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=BatchClassifyJobResponse)
+@router.post("/batch/{job_id}/cancel", response_model=BatchClassifyJobResponse)
+def cancel_classification_job(job_id: str):
+    """Cancel an active or paused classification job, persisting completed work and audit logs."""
+    job = dataset_storage.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+    if job["status"] in ("COMPLETED", "FAILED", "CANCELLED"):
+        return BatchClassifyJobResponse(**job)
+
+    updated = dataset_storage.cancel_job(job_id)
+    return BatchClassifyJobResponse(**updated)

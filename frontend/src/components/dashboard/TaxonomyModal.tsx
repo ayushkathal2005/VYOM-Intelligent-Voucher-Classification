@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { api, TaxonomyListResponse, TaxonomyCardResponse } from "@/lib/api";
+import { getVoucherDefinition } from "@/lib/voucherCategoryDefinitions";
 import { Button } from "../ui/Button";
 
 interface TaxonomyModalProps {
@@ -120,6 +121,40 @@ export function TaxonomyModal({ isOpen, onClose }: TaxonomyModalProps) {
                     Flow: {selectedCard.expected_flow}
                   </p>
                 </div>
+
+                {/* Authoritative User-Facing Category Definition */}
+                {(() => {
+                  const def = getVoucherDefinition(selectedCard.category_name);
+                  if (!def) return null;
+                  return (
+                    <div className="p-4 bg-[#11100E] rounded border border-[rgba(191,145,51,0.25)] space-y-3">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-[#F0AE2C] font-semibold block">
+                          What It Means
+                        </span>
+                        <p className="text-xs text-[#F4EBDD] mt-0.5 leading-relaxed">
+                          {def.meaning}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
+                          When Typically Used
+                        </span>
+                        <p className="text-xs text-[#A69A87] mt-0.5 leading-relaxed">
+                          {def.typicalUse}
+                        </p>
+                      </div>
+                      <div className="pt-2 border-t border-white/5">
+                        <span className="text-[10px] uppercase tracking-wider text-[#F0AE2C] font-semibold block mb-1">
+                          Illustrative Accounting Transaction
+                        </span>
+                        <code className="text-[11px] block p-2 rounded bg-black/60 border border-white/10 font-mono text-[#F4EBDD] break-words whitespace-pre-wrap">
+                          {def.exampleTransaction}
+                        </code>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Ledgers */}
                 <div className="grid grid-cols-2 gap-3">

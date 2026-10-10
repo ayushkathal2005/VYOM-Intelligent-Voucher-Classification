@@ -16,6 +16,8 @@ class DatasetStorage:
         self.datasets: Dict[str, Dict[str, Any]] = {}
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self.predictions: Dict[str, Dict[int, Dict[str, Any]]] = {}
+        self._pause_events: Dict[str, threading.Event] = {}
+        self._cancel_flags: Dict[str, bool] = {}
 
     def save_dataset(
         self,
@@ -72,6 +74,11 @@ class DatasetStorage:
                 "error_message": None,
             }
             self.jobs[job_id] = job
+            ev = threading.Event()
+            ev.set()  # running by default
+            self._pause_events[job_id] = ev
+            self._cancel_flags[job_id] = False
+
             if dataset_id in self.datasets:
                 self.datasets[dataset_id]["status"] = "PROCESSING"
             return job
@@ -79,6 +86,73 @@ class DatasetStorage:
     def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
             return self.jobs.get(job_id)
+
+    def pause_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Cooperatively pause an active job."""
+        with self._lock:
+            job = self.jobs.get(job_id)
+            if not job or job["status"] not in ("PROCESSING", "QUEUED"):
+                return job
+            job["status"] = "PAUSED"
+            ev = self._pause_events.get(job_id)
+            if ev:
+                ev.clear()
+            ds_id = job["dataset_id"]
+            if ds_id in self.datasets:
+                self.datasets[ds_id]["status"] = "PAUSED"
+            return job
+
+    def resume_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Resume a paused job."""
+        with self._lock:
+            job = self.jobs.get(job_id)
+            if not job or job["status"] != "PAUSED":
+                return job
+            job["status"] = "PROCESSING"
+            ev = self._pause_events.get(job_id)
+            if ev:
+                ev.set()
+            ds_id = job["dataset_id"]
+            if ds_id in self.datasets:
+                self.datasets[ds_id]["status"] = "PROCESSING"
+            return job
+
+    def cancel_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Cooperatively cancel an active or paused job, preserving completed work."""
+        with self._lock:
+            job = self.jobs.get(job_id)
+            if not job or job["status"] in ("COMPLETED", "FAILED", "CANCELLED"):
+                return job
+            job["status"] = "CANCELLED"
+            job["completed_at"] = datetime.now(timezone.utc)
+            self._cancel_flags[job_id] = True
+            ev = self._pause_events.get(job_id)
+            if ev:
+                ev.set()  # unblock if paused so the loop terminates immediately
+            ds_id = job["dataset_id"]
+            if ds_id in self.datasets:
+                self.datasets[ds_id]["status"] = "CANCELLED"
+            return job
+
+    def check_job_control(self, job_id: str) -> str:
+        """
+        Check cooperative pause and cancel state.
+        Blocks while paused until resumed or cancelled.
+        Returns 'CONTINUE' or 'CANCELLED'.
+        """
+        import time
+        if self._cancel_flags.get(job_id, False):
+            return "CANCELLED"
+        ev = self._pause_events.get(job_id)
+        if ev and not ev.is_set():
+            # Block while paused, checking cancellation periodically
+            while ev and not ev.is_set():
+                if self._cancel_flags.get(job_id, False):
+                    return "CANCELLED"
+                time.sleep(0.2)
+        if self._cancel_flags.get(job_id, False):
+            return "CANCELLED"
+        return "CONTINUE"
 
     def update_job_progress(
         self,

@@ -2,6 +2,8 @@
 
 import React from "react";
 import { DatasetAnalyticsResponse } from "@/lib/api";
+import { CategoryTooltip } from "./CategoryTooltip";
+import { Badge } from "../ui/Badge";
 
 interface AnalyticsOverviewProps {
   analytics: DatasetAnalyticsResponse | null;
@@ -81,6 +83,104 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
 
   return (
     <div className="w-full space-y-6">
+      {/* Honest Accuracy & Evaluation Benchmark Card */}
+      <div className="bg-[#0B0805] border border-[rgba(191,145,51,0.25)] rounded-lg p-5 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-[#A69A87]">
+              Classification Quality & Integrity
+            </span>
+            {analytics.has_ground_truth ? (
+              <Badge variant="gold" size="sm">
+                GROUND-TRUTH BENCHMARK
+              </Badge>
+            ) : (
+              <Badge variant="neutral" size="sm">
+                PRODUCTION INFERENCE
+              </Badge>
+            )}
+          </div>
+          <span className="text-[11px] font-mono text-[#A69A87]">
+            Denominator: {analytics.total_transactions} Total Transactions
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          {/* Metric 1: Actual Accuracy */}
+          <div className="p-3.5 bg-[#11100E] rounded border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
+              Actual Multi-Class Accuracy
+            </span>
+            {analytics.has_ground_truth ? (
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-2xl font-bold text-emerald-400">
+                  {analytics.evaluation_accuracy}%
+                </span>
+                <span className="text-xs text-[#A69A87] font-mono">
+                  (Macro-F1: {analytics.evaluation_macro_f1})
+                </span>
+              </div>
+            ) : (
+              <div>
+                <span className="font-serif text-lg font-bold text-[#A69A87] block">
+                  Accuracy: N/A — no ground-truth labels
+                </span>
+                <span className="text-[11px] text-[#A69A87]/70 block mt-0.5">
+                  Offline ground-truth labels required for true accuracy.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Metric 2: Mean Calibrated Confidence */}
+          <div className="p-3.5 bg-[#11100E] rounded border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
+              Per-Record Calibrated Confidence
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-serif text-2xl font-bold text-[#F0AE2C]">
+                {(analytics.average_confidence * 100).toFixed(1)}%
+              </span>
+              <span className="text-xs text-[#A69A87] font-mono">
+                (Model certainty score)
+              </span>
+            </div>
+            <span className="text-[11px] text-[#A69A87]/70 block mt-0.5">
+              Confidence is calibrated certainty, not actual accuracy.
+            </span>
+          </div>
+
+          {/* Metric 3: Evaluation Sample Size or Triage Ratio */}
+          <div className="p-3.5 bg-[#11100E] rounded border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
+              {analytics.has_ground_truth ? "Evaluation Sample Size" : "Batch Triage Reliability"}
+            </span>
+            {analytics.has_ground_truth ? (
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-2xl font-bold text-[#F4EBDD]">
+                  N = {analytics.evaluation_sample_size}
+                </span>
+                <span className="text-xs text-[#A69A87] font-mono">
+                  verified records
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-2xl font-bold text-emerald-400">
+                  {formatKpiPercentage(analytics.auto_verified_percentage, analytics.auto_verified_count, analytics.total_transactions)}
+                </span>
+                <span className="text-xs text-[#A69A87] font-mono">
+                  auto-verified triage rate
+                </span>
+              </div>
+            )}
+            <span className="text-[11px] text-[#A69A87]/70 block mt-0.5">
+              {analytics.has_ground_truth ? "Evaluated against authoritative labels." : "Clean records requiring zero human intervention."}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* 5 Core Audit KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* KPI 1: Total Transactions */}
@@ -221,9 +321,11 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
               return (
                 <div key={category} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#F4EBDD] font-medium truncate max-w-[280px]">
-                      {category}
-                    </span>
+                    <CategoryTooltip category={category}>
+                      <span className="text-[#F4EBDD] font-medium truncate max-w-[280px] hover:text-[#F0AE2C] transition-colors cursor-help">
+                        {category}
+                      </span>
+                    </CategoryTooltip>
                     <span className="text-[#A69A87] font-mono">
                       {count} <span className="text-[#A69A87]/60">({pct}%)</span>
                     </span>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { api, PredictionDetailResponse } from "@/lib/api";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+import { CategoryTooltip } from "./CategoryTooltip";
 
 interface VoucherDetailModalProps {
   datasetId: string;
@@ -107,7 +108,9 @@ export function VoucherDetailModal({
                     Authoritative Category Classification
                   </span>
                   <div className="text-xl font-serif font-bold text-[#F0AE2C] mt-1 flex items-center gap-2">
-                    <span>{detail.predicted_category}</span>
+                    <CategoryTooltip category={detail.predicted_category}>
+                      <span className="cursor-help hover:underline">{detail.predicted_category}</span>
+                    </CategoryTooltip>
                     {detail.is_overridden && (
                       <span className="text-xs font-sans text-amber-300 font-normal">
                         (Overridden by auditor)

@@ -86,6 +86,36 @@ def get_dataset_analytics(dataset_id: str):
     flagged_pct = round((flagged_for_review_count / total_txns) * 100.0, 1)
     critical_rejection_pct = round((critical_rejection_count / total_txns) * 100.0, 1)
 
+    # Check for ground-truth labels in dataset records for honest accuracy calculation
+    from app.ml.taxonomy import normalize_voucher_label
+    txns = ds.get("transactions", [])
+    y_true = []
+    y_pred = []
+
+    for t in txns:
+        if t.row_id in all_preds:
+            true_label = t.ground_truth_label
+            if not true_label and t.raw_record:
+                for k, v in t.raw_record.items():
+                    if "category" in k.strip().lower() or "voucher type" in k.strip().lower():
+                        true_label = v
+                        break
+            if true_label is not None:
+                norm_true = normalize_voucher_label(str(true_label))
+                if norm_true:
+                    y_true.append(norm_true)
+                    y_pred.append(all_preds[t.row_id]["result"].prediction.category)
+
+    has_ground_truth = len(y_true) > 0
+    eval_acc = None
+    eval_macro_f1 = None
+    eval_sample_size = None
+    if has_ground_truth:
+        from sklearn.metrics import accuracy_score, f1_score
+        eval_sample_size = len(y_true)
+        eval_acc = round(accuracy_score(y_true, y_pred) * 100.0, 2)
+        eval_macro_f1 = round(f1_score(y_true, y_pred, average="macro", zero_division=0), 4)
+
     triage_dict = dict(triage_counter)
     contradiction_dict = dict(contradiction_counter.most_common())
 
@@ -110,6 +140,10 @@ def get_dataset_analytics(dataset_id: str):
         triage_decision_distribution=triage_dict,
         contradiction_counts=contradiction_dict,
         contradiction_breakdown=contradiction_dict,
+        has_ground_truth=has_ground_truth,
+        evaluation_accuracy=eval_acc,
+        evaluation_macro_f1=eval_macro_f1,
+        evaluation_sample_size=eval_sample_size,
     )
 
 

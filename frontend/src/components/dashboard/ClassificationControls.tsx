@@ -26,12 +26,17 @@ export function ClassificationControls({
   const [useMock, setUseMock] = useState<boolean>(true);
   const [activeJob, setActiveJob] = useState<BatchClassifyJobStatusResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPausing, setIsPausing] = useState<boolean>(false);
+  const [isResuming, setIsResuming] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<boolean>(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startClassification = async () => {
     if (!datasetId) return;
     setErrorMessage(null);
     setIsProcessing(true);
+    setShowCancelConfirm(false);
 
     try {
       const job = await api.startBatchClassify(datasetId, mode, useMock);
@@ -52,9 +57,52 @@ export function ClassificationControls({
     }
   };
 
-  // Poll status while job is processing
+  const handlePause = async () => {
+    if (!activeJob) return;
+    setIsPausing(true);
+    try {
+      const updated = await api.pauseBatchJob(activeJob.job_id);
+      setActiveJob(updated);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to pause classification.");
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!activeJob) return;
+    setIsResuming(true);
+    try {
+      const updated = await api.resumeBatchJob(activeJob.job_id);
+      setActiveJob(updated);
+      setIsProcessing(true);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to resume classification.");
+    } finally {
+      setIsResuming(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!activeJob) return;
+    setIsCancelling(true);
+    setShowCancelConfirm(false);
+    try {
+      const updated = await api.cancelBatchJob(activeJob.job_id);
+      setActiveJob(updated);
+      setIsProcessing(false);
+      onClassificationCompleted();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to cancel classification.");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // Poll status while job is processing or pausing
   useEffect(() => {
-    if (!activeJob || activeJob.status !== "PROCESSING") {
+    if (!activeJob || (activeJob.status !== "PROCESSING" && activeJob.status !== "PAUSING" && activeJob.status !== "CANCELLING")) {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
@@ -68,6 +116,13 @@ export function ClassificationControls({
         setActiveJob(status);
 
         if (status.status === "COMPLETED") {
+          setIsProcessing(false);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          onClassificationCompleted();
+        } else if (status.status === "CANCELLED") {
           setIsProcessing(false);
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -180,18 +235,71 @@ export function ClassificationControls({
       </div>
 
       {/* Action / Progress Area */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="gold"
-            size="md"
-            disabled={!datasetId || isProcessing}
-            isLoading={isProcessing}
-            onClick={startClassification}
-            id="btn-run-batch-classification"
-          >
-            {isProcessing ? "Classifying Transactions..." : `Classify All ${totalRows || 0} Transactions`}
-          </Button>
+      <div className="mt-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          {(!activeJob || activeJob.status === "COMPLETED" || activeJob.status === "FAILED" || activeJob.status === "CANCELLED") && (
+            <Button
+              variant="gold"
+              size="md"
+              disabled={!datasetId || isProcessing}
+              isLoading={isProcessing}
+              onClick={startClassification}
+              id="btn-run-batch-classification"
+            >
+              {isProcessing ? "Classifying Transactions..." : activeJob?.status === "CANCELLED" ? `Restart All ${totalRows || 0} Transactions` : `Classify All ${totalRows || 0} Transactions`}
+            </Button>
+          )}
+
+          {/* Pause / Resume Controls during active processing */}
+          {activeJob && (activeJob.status === "PROCESSING" || activeJob.status === "PAUSING") && (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handlePause}
+              disabled={isPausing || activeJob.status === "PAUSING"}
+              isLoading={isPausing}
+              id="btn-pause-job"
+              className="border-amber-500/40 text-amber-300 hover:border-amber-400"
+            >
+              <span className="flex items-center gap-2">
+                <span>⏸</span>
+                <span>{activeJob.status === "PAUSING" ? "Pausing at record..." : "Pause Processing"}</span>
+              </span>
+            </Button>
+          )}
+
+          {activeJob && activeJob.status === "PAUSED" && (
+            <Button
+              variant="gold"
+              size="md"
+              onClick={handleResume}
+              disabled={isResuming}
+              isLoading={isResuming}
+              id="btn-resume-job"
+            >
+              <span className="flex items-center gap-2">
+                <span>▶</span>
+                <span>Resume Processing</span>
+              </span>
+            </Button>
+          )}
+
+          {/* Cancel button during processing or paused */}
+          {activeJob && (activeJob.status === "PROCESSING" || activeJob.status === "PAUSED" || activeJob.status === "PAUSING") && (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setShowCancelConfirm(true)}
+              disabled={isCancelling}
+              id="btn-cancel-job"
+              className="text-red-400/80 hover:text-red-400 hover:bg-red-950/20"
+            >
+              <span className="flex items-center gap-1.5">
+                <span>✕</span>
+                <span>Cancel Batch</span>
+              </span>
+            </Button>
+          )}
 
           {activeJob?.status === "COMPLETED" && (
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
@@ -201,14 +309,37 @@ export function ClassificationControls({
               <span>Batch Complete &bull; 100% Processed</span>
             </div>
           )}
+
+          {activeJob?.status === "PAUSED" && (
+            <Badge variant="subtle" size="sm">
+              PAUSED AT ROW {activeJob.processed_rows}
+            </Badge>
+          )}
+
+          {activeJob?.status === "CANCELLED" && (
+            <div className="flex items-center gap-2 text-amber-400/90 text-xs font-semibold uppercase tracking-wider">
+              <span>Job Cancelled &bull; {activeJob.processed_rows} of {activeJob.total_rows} Preserved</span>
+            </div>
+          )}
         </div>
 
-        {/* Live Progress Bar when active or complete */}
+        {/* Live Progress Bar when active, paused, or complete */}
         {activeJob && (
-          <div className="w-full sm:max-w-md bg-[#050505] p-3 rounded border border-white/5 space-y-2">
+          <div className="w-full lg:max-w-md bg-[#050505] p-3 rounded border border-white/5 space-y-2">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-[#A69A87]">
-                Progress: {activeJob.processed_rows} / {activeJob.total_rows}
+              <span className="text-[#A69A87] flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    activeJob.status === "PROCESSING"
+                      ? "bg-[#F0AE2C] animate-pulse"
+                      : activeJob.status === "PAUSED"
+                      ? "bg-amber-400"
+                      : activeJob.status === "COMPLETED"
+                      ? "bg-emerald-400"
+                      : "bg-red-400"
+                  }`}
+                />
+                Status: {activeJob.status} ({activeJob.processed_rows} / {activeJob.total_rows})
               </span>
               <span className="text-[#F0AE2C] font-semibold">
                 {activeJob.progress_percent}%
@@ -217,13 +348,51 @@ export function ClassificationControls({
 
             <div className="w-full h-2 bg-[#11100E] rounded-full overflow-hidden border border-white/5">
               <div
-                className="h-full bg-gradient-to-r from-[#9D7019] via-[#F0AE2C] to-[#ffe29c] transition-all duration-300 rounded-full"
+                className={`h-full transition-all duration-300 rounded-full ${
+                  activeJob.status === "PAUSED"
+                    ? "bg-amber-500/70"
+                    : activeJob.status === "CANCELLED"
+                    ? "bg-red-500/60"
+                    : "bg-gradient-to-r from-[#9D7019] via-[#F0AE2C] to-[#ffe29c]"
+                }`}
                 style={{ width: `${activeJob.progress_percent}%` }}
               />
             </div>
           </div>
         )}
       </div>
+
+      {/* Cancel Confirmation Prompt */}
+      {showCancelConfirm && activeJob && (
+        <div className="mt-4 p-4 rounded-lg bg-red-950/30 border border-red-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-red-300 uppercase tracking-wider">
+              Confirm Batch Cancellation
+            </h4>
+            <p className="text-xs text-[#F4EBDD]/80">
+              Outstanding records will stop scheduling immediately. All {activeJob.processed_rows} completed predictions will be safely retained in your dataset.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCancelConfirm(false)}
+            >
+              Keep Processing
+            </Button>
+            <Button
+              variant="gold"
+              size="sm"
+              isLoading={isCancelling}
+              onClick={handleCancel}
+              className="!bg-red-600 hover:!bg-red-500 text-white"
+            >
+              Confirm Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Error Message */}
       {errorMessage && (

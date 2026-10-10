@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+import { CategoryTooltip } from "./CategoryTooltip";
 
 const AUTHORITATIVE_CATEGORIES = [
   "Purchase",
@@ -353,10 +354,12 @@ export function ReviewQueueTable({
 
                     {/* Category & Override Pill */}
                     <td className="p-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-[#F0AE2C]">
-                          {row.predicted_category}
-                        </span>
+                      <div className="flex items-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <CategoryTooltip category={row.predicted_category}>
+                          <span className="font-semibold text-[#F0AE2C] hover:underline cursor-help">
+                            {row.predicted_category}
+                          </span>
+                        </CategoryTooltip>
                         {row.is_overridden && (
                           <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#F0AE2C]/20 border border-[#F0AE2C]/40 text-[#F0AE2C]">
                             OVERRIDDEN

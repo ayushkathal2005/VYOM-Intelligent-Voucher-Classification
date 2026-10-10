@@ -19,42 +19,33 @@ import { ExportToolbar } from "./ExportToolbar";
 import { TaxonomyModal } from "./TaxonomyModal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+import { useWorkspace } from "@/context/WorkspaceContext";
 
 export function WorkspaceView() {
   const [activeTab, setActiveTab] = useState<"WORKSPACE" | "SANDBOX">("WORKSPACE");
-  const [activeDataset, setActiveDataset] = useState<DatasetUploadResponse | null>(null);
-  const [analytics, setAnalytics] = useState<DatasetAnalyticsResponse | null>(null);
-  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isClassified, setIsClassified] = useState<boolean>(false);
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const {
+    activeDataset,
+    setActiveDataset,
+    analytics,
+    isAnalyticsLoading,
+    isProcessing,
+    setIsProcessing,
+    isClassified,
+    setIsClassified,
+    refreshTrigger,
+    triggerRefresh,
+    loadAnalytics,
+  } = useWorkspace();
 
   // Modals state
   const [inspectRowId, setInspectRowId] = useState<number | null>(null);
   const [overrideRowId, setOverrideRowId] = useState<number | null>(null);
   const [isTaxonomyOpen, setIsTaxonomyOpen] = useState<boolean>(false);
 
-  // Load analytics whenever dataset is classified or refreshed
-  const loadAnalytics = useCallback(async (datasetId: string) => {
-    setIsAnalyticsLoading(true);
-    try {
-      const data = await api.getDatasetAnalytics(datasetId);
-      setAnalytics(data);
-      if (data.processed_transactions > 0) {
-        setIsClassified(true);
-      }
-    } catch {
-      // analytics may be pending prior to classification
-    } finally {
-      setIsAnalyticsLoading(false);
-    }
-  }, []);
-
   const handleDatasetLoaded = (dataset: DatasetUploadResponse) => {
     setActiveDataset(dataset);
     setIsClassified(false);
-    setAnalytics(null);
-    setRefreshTrigger((prev) => prev + 1);
+    triggerRefresh();
   };
 
   const handleClassificationStarted = (_job: BatchClassifyJobResponse) => {
@@ -66,7 +57,7 @@ export function WorkspaceView() {
     setIsClassified(true);
     if (activeDataset) {
       await loadAnalytics(activeDataset.dataset_id);
-      setRefreshTrigger((prev) => prev + 1);
+      triggerRefresh();
     }
   };
 
@@ -74,7 +65,7 @@ export function WorkspaceView() {
     if (activeDataset) {
       loadAnalytics(activeDataset.dataset_id);
     }
-    setRefreshTrigger((prev) => prev + 1);
+    triggerRefresh();
   };
 
   return (

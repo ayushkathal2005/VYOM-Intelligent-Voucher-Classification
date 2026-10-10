@@ -601,6 +601,62 @@ Evaluated end-to-end classification including deterministic guardrails, signal e
   - `test_api_batch_classify_fast_and_hybrid_modes`
 - **Frontend Production Build**: `npm run build` compiled successfully with Next.js 16.4.0 (Turbopack) in 3.6s with zero TypeScript errors.
 
+---
+
+## 20. Phase 12 — Focused UI and Workflow Improvements
+
+### 20.1 Route Decomposition & Navigation
+Deconstructed the single-page application into dedicated Next.js App Router routes while strictly preserving the luxury aesthetic (`#050505`, `#0B0805`, `#F0AE2C`, `#F4EBDD`), typography, component styling, and responsive behavior:
+- `/` — Homepage, dominant editorial hero section, product architecture overview, and 27-label taxonomy.
+- `/upload` — Dedicated Upload Studio with drag-and-drop, schema mapping preview, and file validation.
+- `/classify` — Tri-Mode classification controls (Fast Local ML, Adaptive Hybrid, Gemma 4 AI) with live progress and job controls.
+- `/analytics` — Comprehensive audit metrics, category distribution with tooltips, and Honest Accuracy evaluation.
+- `/review` — Auditor review queue table, flagged voucher triage, and human override adjustments.
+- `/results` — Complete classified predictions table, multi-parameter filtering, modal inspector, and audited Excel/CSV exports.
+- `/test` — Interactive real-time single-transaction AI sandbox.
+
+Persistent workspace state across route changes and browser refresh is managed through `WorkspaceContext.tsx` and `WorkspaceNav.tsx` without introducing heavy external state libraries.
+
+### 20.2 Authoritative 27 Voucher Category Popovers & Tooltips
+- Created `CategoryTooltip.tsx` and `voucherCategoryDefinitions.ts` providing structured domain reference:
+  1. **Accounting Definition / Meaning**: What the voucher represents.
+  2. **When Typically Used**: Real-world operational scenarios.
+  3. **Illustrative Transaction**: Clear Dr/Cr accounting entry.
+- Fully accessible via mouse hover, keyboard focus (`tabIndex={0}`, `Enter`/`Space`/`Escape`), and mobile click/tap.
+- Integrated across the 27 Taxonomy section, Taxonomy Modal explorer, Review Queue Table, Voucher Detail Inspector, and Analytics category distribution list.
+- Strictly validated and preserved authoritative semantics for edge categories:
+  - **Job Work In Order**: Contractual order received from principal engaging our firm to perform processing operations on customer materials.
+  - **Job Work Out Order**: Contractual subcontracting work order issued to external contractor outsourcing operations on our materials.
+  - **Rejection In**: Physical receipt and quarantine logging of defective goods returned to our warehouse.
+  - **Rejection Out**: Physical return and outward dispatch of substandard goods sent back to supplier or contractor.
+
+### 20.3 Honest Classification Accuracy Reporting
+Decoupled model self-reported confidence from actual classification accuracy:
+- **Actual Accuracy**: Computed solely when ground-truth labels exist in the dataset (or evaluation split). Displays multi-class accuracy percentage, Macro-F1, and explicit evaluation sample size ($N$).
+- **Unlabeled / Production Datasets**: Explicitly displays `Accuracy: N/A — no ground-truth labels`. Displays calibrated confidence (e.g. `94.2%`) labeled as model certainty, not accuracy.
+- **Production Batch Metrics**: Well-defined denominators (`count / total_transactions * 100`) for Auto-Verified, Review Queue, and Critical Rejections. Handles zero-record and missing label datasets safely without crashing or converting API errors to zero.
+
+### 20.4 Cooperative Pause, Resume, and Cancel Batch Controls
+Implemented thread-safe cooperative batch job controls in the FastAPI backend:
+- `POST /api/v1/classify/jobs/{job_id}/pause`
+- `POST /api/v1/classify/jobs/{job_id}/resume`
+- `POST /api/v1/classify/jobs/{job_id}/cancel`
+- Implemented with `threading.Event` and cancel flags at transaction boundaries, preventing dropped worker state and duplicate processing on resume.
+- Cancellation prompts for confirmation in the UI to prevent accidental clicks, immediately halts further scheduling, and preserves all completed predictions for immediate inspection and audited export.
+- Idempotent and race-condition safe against rapid repeated clicks.
+
+### 20.5 Verification & Acceptance Testing
+- **Backend Test Suite**: All **96 tests passing** (`pytest backend/tests -v`, 100% green in 9.07s).
+- **Job Controls & Accuracy Test Suite** (`backend/tests/test_job_controls.py`):
+  - `test_pause_and_resume_batch_job` (PASSED)
+  - `test_cancel_batch_job` (PASSED)
+  - `test_repeated_pause_resume_cancel_safety` (PASSED)
+  - `test_analytics_honest_accuracy_with_and_without_ground_truth` (PASSED)
+  - `test_zero_record_and_missing_label_analytics` (PASSED)
+  - `test_cancelled_job_export_integrity` (PASSED)
+- **Frontend Production Build**: `npm run build` compiled successfully with Next.js 16.4.0 (Turbopack) in 3.1s with all 7 static routes prerendered.
+
+
 
 
 

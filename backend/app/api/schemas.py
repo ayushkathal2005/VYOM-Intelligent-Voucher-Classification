@@ -205,6 +205,10 @@ class AnalyticsResponse(BaseModel):
     triage_decision_distribution: Dict[str, int] = Field(default_factory=dict)
     contradiction_counts: Dict[str, int] = Field(default_factory=dict)
     contradiction_breakdown: Dict[str, int] = Field(default_factory=dict)
+    has_ground_truth: bool = False
+    evaluation_accuracy: Optional[float] = None
+    evaluation_macro_f1: Optional[float] = None
+    evaluation_sample_size: Optional[int] = None
 
 
 # -----------------------------------------------------------------------------

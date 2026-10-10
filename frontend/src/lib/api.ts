@@ -132,7 +132,7 @@ export interface SingleClassifyResponse {
 export interface BatchClassifyJobResponse {
   job_id: string;
   dataset_id: string;
-  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "PAUSED" | "PAUSING" | "CANCELLED" | "CANCELLING" | "QUEUED";
   total_rows: number;
   processed_rows: number;
   progress_percent: number;
@@ -143,7 +143,7 @@ export interface BatchClassifyJobResponse {
 export interface BatchClassifyJobStatusResponse {
   job_id: string;
   dataset_id: string;
-  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "PAUSED" | "PAUSING" | "CANCELLED" | "CANCELLING" | "QUEUED";
   total_rows: number;
   processed_rows: number;
   progress_percent: number;
@@ -245,6 +245,10 @@ export interface DatasetAnalyticsResponse {
   triage_distribution?: Record<string, number>;
   contradiction_breakdown?: Record<string, number>;
   contradiction_counts?: Record<string, number>;
+  has_ground_truth?: boolean;
+  evaluation_accuracy?: number | null;
+  evaluation_macro_f1?: number | null;
+  evaluation_sample_size?: number | null;
 }
 
 export interface TaxonomyCardResponse {
@@ -343,6 +347,27 @@ export const api = {
 
   async getBatchJobStatus(jobId: string): Promise<BatchClassifyJobStatusResponse> {
     const res = await fetch(`${API_BASE_URL}/api/v1/classify/jobs/${jobId}`);
+    return handleResponse<BatchClassifyJobStatusResponse>(res);
+  },
+
+  async pauseBatchJob(jobId: string): Promise<BatchClassifyJobStatusResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/classify/jobs/${jobId}/pause`, {
+      method: "POST",
+    });
+    return handleResponse<BatchClassifyJobStatusResponse>(res);
+  },
+
+  async resumeBatchJob(jobId: string): Promise<BatchClassifyJobStatusResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/classify/jobs/${jobId}/resume`, {
+      method: "POST",
+    });
+    return handleResponse<BatchClassifyJobStatusResponse>(res);
+  },
+
+  async cancelBatchJob(jobId: string): Promise<BatchClassifyJobStatusResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/classify/jobs/${jobId}/cancel`, {
+      method: "POST",
+    });
     return handleResponse<BatchClassifyJobStatusResponse>(res);
   },
 
