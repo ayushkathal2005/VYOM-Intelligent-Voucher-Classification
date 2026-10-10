@@ -1,29 +1,40 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const serifFont = Playfair_Display({
+  variable: "--font-serif",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sansFont = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "VYOM+ | Intelligent Voucher Classification",
-  description: "AI-powered financial transaction intelligence platform converting structured accounting records into voucher classifications.",
+  title: "VYOM+ | Intelligent Voucher Classification Using Open-Source AI",
+  description: "Transform structured transaction records into intelligent accounting voucher classifications using Gemma 4 on the Gemini API.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${serifFont.variable} ${sansFont.variable} dark`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-screen bg-[#050505] text-[#F4EBDD] font-sans antialiased selection:bg-[#F0AE2C]/30 selection:text-[#F4EBDD]">
+        {children}
+      </body>
     </html>
   );
 }

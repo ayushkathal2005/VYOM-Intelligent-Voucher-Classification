@@ -1,20 +1,35 @@
+"use client";
+
+import React from "react";
+import { Header } from "@/components/Header";
+import { HeroSection } from "@/components/HeroSection";
+import { ProductIntroSection } from "@/components/ProductIntroSection";
+import { Footer } from "@/components/Footer";
+
 export default function Home() {
+  const handleLaunch = () => {
+    const el = document.getElementById("overview");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-black text-amber-50">
-      <div className="max-w-xl text-center space-y-4">
-        <div className="inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400 border border-amber-500/30 rounded-full bg-amber-950/20">
-          VYOM+ Foundation
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight text-[#F4EBDD]">
-          VYOM+
-        </h1>
-        <p className="text-lg text-[#A69A87]">
-          Your books. Understood by AI.
-        </p>
-        <p className="text-sm text-neutral-400">
-          Core frontend and backend foundations initialized. Minimal entrypoint active.
-        </p>
-      </div>
-    </main>
+    <div className="min-h-screen bg-[#050505] text-[#F4EBDD] flex flex-col justify-between selection:bg-[#F0AE2C]/30 selection:text-[#F4EBDD]">
+      {/* Fixed Luxury Header */}
+      <Header />
+
+      {/* Main Content Area */}
+      <main className="flex-1 w-full">
+        {/* Dominant Reference-Matched Hero Section */}
+        <HeroSection onLaunchClick={handleLaunch} />
+
+        {/* Product Introduction, Architecture & 27 Taxonomy Sections */}
+        <ProductIntroSection />
+      </main>
+
+      {/* Clean Restrained Footer */}
+      <Footer />
+    </div>
   );
 }
