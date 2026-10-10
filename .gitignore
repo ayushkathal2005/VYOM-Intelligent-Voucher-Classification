@@ -77,6 +77,8 @@ Desktop.ini
 *.xlsx
 *.xls
 Voucher_Classification_Test_Cases*.xlsx
+!demo_voucher_sample.xlsx
+!frontend/public/demo_voucher_sample.xlsx
 
 # Temporary benchmarks and scratch scripts
 scratch/

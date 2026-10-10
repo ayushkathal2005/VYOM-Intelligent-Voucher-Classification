@@ -57,6 +57,24 @@ export function UploadStudio({ onDatasetLoaded, activeDataset }: UploadStudioPro
     }
   };
 
+  const handleLoadCuratedDemo = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const resp = await fetch("/demo_voucher_sample.xlsx");
+      if (!resp.ok) throw new Error("Could not fetch demo dataset.");
+      const blob = await resp.blob();
+      const demoFile = new File([blob], "demo_voucher_sample.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      await handleFile(demoFile);
+    } catch (err: any) {
+      setUploadError(err.message || "Failed to load demo dataset.");
+      setIsUploading(false);
+    }
+  };
+
   const loadPreview = async (page: number = 1) => {
     if (!activeDataset) return;
     setIsPreviewLoading(true);
@@ -173,6 +191,21 @@ export function UploadStudio({ onDatasetLoaded, activeDataset }: UploadStudioPro
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[#A69A87]">
               AUTO-SCHEMA
             </span>
+          </div>
+
+          {/* Quick Demo Dataset Loader */}
+          <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-center gap-3">
+            <span className="text-[11px] text-[#A69A87]">Presenter Quick Demo:</span>
+            <button
+              type="button"
+              onClick={handleLoadCuratedDemo}
+              disabled={isUploading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold text-[#F0AE2C] bg-[#11100E] border border-[rgba(191,145,51,0.35)] hover:border-[#F0AE2C] hover:bg-[#1a1814] transition-all cursor-pointer shadow-sm"
+              id="btn-load-demo-dataset"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F0AE2C] animate-pulse" />
+              <span>Load Curated Demo Dataset (25 Vouchers)</span>
+            </button>
           </div>
         </div>
       ) : (
