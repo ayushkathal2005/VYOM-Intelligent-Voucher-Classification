@@ -22,7 +22,7 @@
 | 8 | Backend REST API | COMPLETE | `369f67f` | Verified (`origin/main`) | Approved |
 | 9 | Connected Dashboard | COMPLETE | `937ed96` | Verified (`origin/main`) | Approved |
 | 10 | Robustness & Evaluation | COMPLETE | `572c01a` | Verified (`origin/main`) | Approved |
-| **11** | **Release & Packaging** | **COMPLETE** | *(pending commit)* | Verified (`origin/main`) | **Final Approval** |
+| **11** | **Release & Packaging** | **COMPLETE** | `8b107d4` | Verified (`origin/main`) | **Final Approval** |
 
 ---
 
