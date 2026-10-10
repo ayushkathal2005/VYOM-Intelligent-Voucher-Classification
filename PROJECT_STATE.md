@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 0 — Repository Audit**
-> Status: **COMPLETE** (Awaiting user review at Phase 0 Gate)
+> Current Authorized Phase: **Phase 1 — Project Foundation**
+> Status: **COMPLETE** (Awaiting user review at Phase 1 Gate)
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Phase | Name | Status | Commit | Remote Push | Gate Approval |
 | :---: | :--- | :---: | :---: | :---: | :---: |
-| **0** | **Repository Audit** | **COMPLETE** | `c5fd3f6` | Verified (`origin/main`) | **Current Phase Gate** |
-| 1 | Project Foundation | PENDING | — | — | Not Authorized |
+| 0 | Repository Audit | COMPLETE | `8a2dc3c` | Verified (`origin/main`) | Approved |
+| **1** | **Project Foundation** | **COMPLETE** | Pending | Verified (Dry-run OK) | **Current Phase Gate** |
 | 2 | Visual Foundation | PENDING | — | — | Not Authorized |
 | 3 | Data Ingestion | PENDING | — | — | Not Authorized |
 | 4 | Baseline Classifier | PENDING | — | — | Not Authorized |
@@ -151,5 +151,5 @@
 
 ## 8. Next Permitted Action
 
-Upon user review and authorization of the Phase 0 report:
-Proceed to **Phase 1 — Project Foundation**.
+Upon user review and authorization of the Phase 1 report:
+Proceed to **Phase 2 — Visual Foundation**.
