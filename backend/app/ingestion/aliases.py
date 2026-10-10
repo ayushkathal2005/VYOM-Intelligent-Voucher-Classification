@@ -3,6 +3,19 @@
 import re
 from typing import Dict, List, Optional
 
+# Target category columns that must NEVER be resolved to input features or canonical fields
+TARGET_LABEL_COLUMNS = {
+    "voucher_category",
+    "voucher_type",
+    "category",
+    "target",
+    "target_label",
+    "label",
+    "voucher_cat",
+    "vch_type",
+    "vch_category",
+}
+
 # Mapping canonical field -> list of recognized aliases
 CANONICAL_ALIASES: Dict[str, List[str]] = {
     "seller_supplier": [
@@ -17,6 +30,8 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "vendor_name",
         "creditor",
         "supplier_ledger",
+        "exporter",
+        "subcontractor",
     ],
     "buyer_customer": [
         "buyer",
@@ -29,6 +44,12 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "party_account",
         "debtor",
         "customer_ledger",
+        "importer",
+        "contractor",
+        "principal",
+        "ordering_company",
+        "receiving_company",
+        "selling_company",
     ],
     "invoice_number": [
         "invoice_no",
@@ -43,7 +64,19 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "inv_num",
         "bill_num",
         "document_no",
+        "document_number",
         "invoice",
+        "grn_number",
+        "delivery_challan_no",
+        "import_bill_no",
+        "export_invoice_no",
+        "expense_claim_no",
+        "payment_id",
+        "receipt_id",
+        "contra_id",
+        "journal_id",
+        "stock_adj_id",
+        "stock_count_id",
     ],
     "invoice_date": [
         "invoice_date",
@@ -54,6 +87,19 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "txn_date",
         "transaction_date",
         "document_date",
+        "po_date",
+        "so_date",
+        "receipt_date",
+        "dispatch_date",
+        "rejection_date",
+        "payment_date",
+        "entry_date",
+        "claim_date",
+        "adjustment_date",
+        "count_date",
+        "order_date",
+        "date_of_dispatch",
+        "date_of_receipt",
     ],
     "item_descriptions": [
         "item",
@@ -68,6 +114,14 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "line_item",
         "product_name",
         "stock_item",
+        "item_received",
+        "item_dispatched",
+        "item_rejected",
+        "material_description",
+        "export_item",
+        "import_item",
+        "item_name",
+        "material",
     ],
     "quantity": [
         "qty",
@@ -78,6 +132,16 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "pieces",
         "count",
         "item_quantity",
+        "quantity_required",
+        "quantity_ordered",
+        "quantity_received",
+        "quantity_shipped",
+        "quantity_rejected",
+        "units_returned",
+        "units_exported",
+        "units_imported",
+        "adjustment_qty",
+        "quantity_sent",
     ],
     "taxable_value": [
         "taxable_value",
@@ -90,6 +154,8 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "subtotal",
         "taxable",
         "basic_amount",
+        "cost_insurance_freight",
+        "free_on_board_value",
     ],
     "gst": [
         "gst",
@@ -103,6 +169,8 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "tax_amount",
         "vat",
         "vat_amount",
+        "customs_duty",
+        "import_gst",
     ],
     "discount": [
         "discount",
@@ -110,6 +178,7 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "discount_amount",
         "rebate",
         "trade_discount",
+        "export_incentive",
     ],
     "freight": [
         "freight",
@@ -117,6 +186,7 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "shipping_charges",
         "freight_charges",
         "transport",
+        "transport_cost",
         "delivery_charges",
         "cartage",
     ],
@@ -129,6 +199,11 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "bill_total",
         "final_amount",
         "invoice_value",
+        "total_value",
+        "transfer_amount",
+        "amount_claimed",
+        "received_amount",
+        "payment_amount",
     ],
     "payment_information": [
         "payment_information",
@@ -142,6 +217,9 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "payment_status",
         "cheque_no",
         "utr",
+        "payment_method",
+        "bank_details",
+        "payment_terms",
     ],
     "return_information": [
         "return_information",
@@ -150,9 +228,14 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "debit_note_ref",
         "credit_note_ref",
         "rejection_note",
+        "rejection_note_no",
         "return_reason",
+        "reason_for_return",
+        "rejection_reason",
         "sales_return",
         "purchase_return",
+        "original_doc_ref",
+        "original_invoice_ref",
     ],
     "order_reference": [
         "order_reference",
@@ -161,9 +244,13 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "order_id",
         "po_no",
         "so_no",
+        "so_number",
         "purchase_order_ref",
         "sales_order_ref",
-        "po_date",
+        "reference_po",
+        "po_ref",
+        "jwio_ref",
+        "jwoo_ref",
         "order_details",
     ],
     "delivery_information": [
@@ -176,11 +263,18 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "dispatch_note",
         "receipt_note_no",
         "delivery_status",
+        "delivery_ref",
+        "so_reference",
+        "dn_reference",
+        "grn_reference",
     ],
     "currency": [
         "currency",
         "curr",
         "curr_code",
+        "currency_code",
+        "payment_currency",
+        "original_currency",
     ],
     "debit_credit_information": [
         "debit_credit",
@@ -191,6 +285,11 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "debit_credit_information",
         "ledger_type",
         "account_type",
+        "debit_side",
+        "credit_side",
+        "source_account",
+        "destination_account",
+        "bank_ifsc_code",
     ],
     "payroll_information": [
         "payroll",
@@ -202,6 +301,10 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "wages",
         "staff_name",
         "employee_code",
+        "employee_full_name",
+        "payroll_period",
+        "gross_salary",
+        "net_payable",
     ],
     "import_export_information": [
         "import_export",
@@ -213,6 +316,8 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "customs",
         "port_of_loading",
         "port_of_discharge",
+        "destination_country",
+        "originating_country",
     ],
     "narration_remarks": [
         "narration",
@@ -222,6 +327,8 @@ CANONICAL_ALIASES: Dict[str, List[str]] = {
         "description_narration",
         "comments",
         "transaction_narration",
+        "transfer_purpose",
+        "agreement_terms",
     ],
 }
 
@@ -238,8 +345,28 @@ def clean_header_string(header: str) -> str:
     return text
 
 
+def is_target_column(header: str) -> bool:
+    """Return True if header indicates a target voucher classification label."""
+    if not header:
+        return False
+    cleaned = clean_header_string(header)
+    if not cleaned:
+        return False
+    if cleaned in TARGET_LABEL_COLUMNS:
+        return True
+    if "voucher" in cleaned and any(k in cleaned for k in ("category", "type", "label", "cat")):
+        return True
+    return False
+
+
 def resolve_canonical_field(raw_header: str) -> Optional[str]:
-    """Resolve a raw header to a canonical field name, or None if unrecognized."""
+    """Resolve a raw header to a canonical field name, or None if unrecognized.
+    
+    CRITICAL: Target category columns ALWAYS return None to prevent leakage into features.
+    """
+    if is_target_column(raw_header):
+        return None
+
     cleaned = clean_header_string(raw_header)
     if not cleaned:
         return None
@@ -255,7 +382,8 @@ def resolve_canonical_field(raw_header: str) -> Optional[str]:
 
     # Generic short words that must be exact matches only to avoid false positives
     RESTRICTED_SHORT_WORDS = {
-        "to", "from", "date", "type", "no", "val", "disc", "curr", "party", "amount"
+        "to", "from", "date", "type", "no", "val", "disc", "curr", "party", "amount",
+        "count", "id", "ref", "code", "side", "rate", "due", "status", "company",
     }
 
     # 3. Check multi-token and distinct single-token aliases
@@ -278,3 +406,4 @@ def resolve_canonical_field(raw_header: str) -> Optional[str]:
                     return canonical
 
     return None
+

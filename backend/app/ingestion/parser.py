@@ -13,7 +13,7 @@ from app.ingestion.schema import (
     IngestionResult,
     SchemaWarning,
 )
-from app.ingestion.aliases import resolve_canonical_field
+from app.ingestion.aliases import resolve_canonical_field, is_target_column
 
 logger = logging.getLogger("vyom.ingestion")
 
@@ -146,6 +146,7 @@ def parse_transaction_file(
     - Never executes spreadsheet formulas (openpyxl data_only=True).
     - Enforces file size and row thresholds.
     - Preserves all original row values in raw_record.
+    - Strips ground truth target labels from feature representations to prevent leakage.
     - Never logs customer/financial payload data.
     """
     if not file_bytes or len(file_bytes) == 0:
@@ -178,10 +179,16 @@ def parse_transaction_file(
             f"Dataset '{filename}' contains {len(raw_rows)} rows, which exceeds the limit of {MAX_ALLOWED_ROWS}."
         )
 
-    # Header discovery and mapping
+    # Discover target label column if present (e.g. for development evaluation/benchmarks)
+    target_col = next((h for h in raw_headers if is_target_column(h)), None)
+    has_target = target_col is not None
+
+    # Header discovery and mapping (strictly omitting target column from feature mapping)
     mapped_fields: Dict[str, str] = {}
     unmapped_columns: List[str] = []
     for h in raw_headers:
+        if is_target_column(h):
+            continue  # NEVER map target column into canonical features
         canon = resolve_canonical_field(h)
         if canon:
             mapped_fields[h] = canon
@@ -215,10 +222,19 @@ def parse_transaction_file(
     duplicates: List[str] = []
 
     for idx, row in enumerate(raw_rows, start=1):
+        # Extract ground truth label strictly for evaluation container (never for inference features)
+        gt_label = None
+        if target_col and row.get(target_col) is not None:
+            raw_gt = sanitize_cell_value(row.get(target_col))
+            if raw_gt is not None:
+                gt_label = str(raw_gt).strip()
+
         # Build canonical object while preserving full raw_record
         txn_data: Dict[str, Any] = {
             "row_id": idx,
+            "ground_truth_label": gt_label,
             "raw_record": row,
+            "custom_populated_fields": {},
         }
 
         # Populate mapped canonical fields
@@ -243,6 +259,16 @@ def parse_transaction_file(
                 sanitized = sanitize_cell_value(raw_val)
                 if sanitized is not None:
                     txn_data[canon_field] = str(sanitized)
+
+        # Collect any unmapped columns that are populated (non-null) for this specific row
+        # STRICT LEAKAGE PREVENTION: target column is never added to custom_populated_fields
+        for unmapped_col in unmapped_columns:
+            if is_target_column(unmapped_col):
+                continue
+            val = row.get(unmapped_col)
+            sanitized = sanitize_cell_value(val)
+            if sanitized is not None:
+                txn_data["custom_populated_fields"][unmapped_col] = sanitized
 
         # Compute total_amount approximation if missing
         if "total_amount" not in txn_data and "taxable_value" in txn_data:
@@ -277,11 +303,12 @@ def parse_transaction_file(
         )
 
     logger.info(
-        "Successfully ingested %s: %d rows, %d columns, %d mapped.",
+        "Successfully ingested %s: %d rows, %d columns, %d mapped, has_target=%s.",
         filename,
         len(canonical_txns),
         len(raw_headers),
         len(mapped_fields),
+        has_target,
     )
 
     return IngestionResult(
@@ -294,8 +321,11 @@ def parse_transaction_file(
         unmapped_columns=unmapped_columns,
         warnings=warnings,
         duplicate_identifiers=duplicates,
+        has_target_column=has_target,
+        target_column_name=target_col,
         canonical_transactions=canonical_txns,
     )
+
 
 
 def _read_xlsx(file_bytes: bytes, filename: str) -> Tuple[List[str], List[Dict[str, Any]]]:

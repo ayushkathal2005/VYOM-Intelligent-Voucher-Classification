@@ -13,6 +13,8 @@ from app.ingestion.aliases import (
     resolve_canonical_field,
     clean_header_string,
     CANONICAL_ALIASES,
+    is_target_column,
+    TARGET_LABEL_COLUMNS,
 )
 
 __all__ = [
@@ -24,4 +26,7 @@ __all__ = [
     "resolve_canonical_field",
     "clean_header_string",
     "CANONICAL_ALIASES",
+    "is_target_column",
+    "TARGET_LABEL_COLUMNS",
 ]
+

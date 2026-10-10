@@ -71,3 +71,9 @@ Desktop.ini
 # Build artifacts
 *.tar.gz
 *.zip
+
+# Reference and judging datasets (development fixtures)
+*.xlsx
+*.xls
+Voucher_Classification_Test_Cases*.xlsx
+

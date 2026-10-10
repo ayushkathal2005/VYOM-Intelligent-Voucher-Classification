@@ -17,46 +17,94 @@ from app.ml.taxonomy import (
 
 
 def extract_text_representation(txn: Union[CanonicalTransaction, Dict[str, Any]]) -> str:
-    """Combine textual and semantic transaction fields into a normalized text representation."""
+    """
+    Combine textual and semantic transaction fields into a compact, leak-free text representation.
+    STRICT LEAKAGE GUARANTEE: Never includes target category columns or ground-truth labels.
+    """
     if isinstance(txn, CanonicalTransaction):
-        parts = [
-            f"supplier: {txn.seller_supplier or ''}",
-            f"buyer: {txn.buyer_customer or ''}",
-            f"items: {' '.join(txn.item_descriptions) if txn.item_descriptions else ''}",
-            f"narration: {txn.narration_remarks or ''}",
-            f"payment: {txn.payment_information or ''}",
-            f"return: {txn.return_information or ''}",
-            f"order: {txn.order_reference or ''}",
-            f"delivery: {txn.delivery_information or ''}",
-            f"debit_credit: {txn.debit_credit_information or ''}",
-            f"payroll: {txn.payroll_information or ''}",
-            f"trade: {txn.import_export_information or ''}",
-        ]
-    else:
-        # Dictionary representation
-        items = txn.get("item_descriptions") or []
-        if isinstance(items, list):
-            items_str = " ".join(str(i) for i in items)
-        else:
-            items_str = str(items)
+        return txn.compact_representation()
 
-        parts = [
-            f"supplier: {txn.get('seller_supplier') or ''}",
-            f"buyer: {txn.get('buyer_customer') or ''}",
-            f"items: {items_str}",
-            f"narration: {txn.get('narration_remarks') or ''}",
-            f"payment: {txn.get('payment_information') or ''}",
-            f"return: {txn.get('return_information') or ''}",
-            f"order: {txn.get('order_reference') or ''}",
-            f"delivery: {txn.get('delivery_information') or ''}",
-            f"debit_credit: {txn.get('debit_credit_information') or ''}",
-            f"payroll: {txn.get('payroll_information') or ''}",
-            f"trade: {txn.get('import_export_information') or ''}",
-        ]
+    # Dictionary representation with target column isolation
+    EXCLUDED_TARGET_KEYS = {
+        "voucher_category",
+        "voucher_type",
+        "category",
+        "target",
+        "label",
+        "voucher_cat",
+        "vch_type",
+        "vch_category",
+        "target_label",
+    }
+
+    parts = []
+    # 1. Standard canonical keys if present
+    if txn.get("order_reference"):
+        parts.append(f"order_ref: {txn['order_reference']}")
+    if txn.get("invoice_number"):
+        parts.append(f"doc_no: {txn['invoice_number']}")
+    if txn.get("invoice_date"):
+        parts.append(f"date: {txn['invoice_date']}")
+    if txn.get("seller_supplier"):
+        parts.append(f"supplier: {txn['seller_supplier']}")
+    if txn.get("buyer_customer"):
+        parts.append(f"buyer: {txn['buyer_customer']}")
+
+    items = txn.get("item_descriptions")
+    if items:
+        if isinstance(items, list):
+            parts.append(f"items: {' '.join(str(i) for i in items)}")
+        else:
+            parts.append(f"items: {items}")
+
+    if txn.get("quantity") is not None:
+        parts.append(f"quantity: {txn['quantity']}")
+    if txn.get("taxable_value") is not None:
+        parts.append(f"taxable_val: {txn['taxable_value']}")
+    if txn.get("gst") is not None and txn.get("gst") > 0:
+        parts.append(f"tax: {txn['gst']}")
+    if txn.get("total_amount") is not None:
+        parts.append(f"total_amount: {txn['total_amount']}")
+    if txn.get("currency") and txn.get("currency") != "INR":
+        parts.append(f"currency: {txn['currency']}")
+    if txn.get("payment_information"):
+        parts.append(f"payment: {txn['payment_information']}")
+    if txn.get("return_information"):
+        parts.append(f"return: {txn['return_information']}")
+    if txn.get("delivery_information"):
+        parts.append(f"delivery: {txn['delivery_information']}")
+    if txn.get("debit_credit_information"):
+        parts.append(f"accounts: {txn['debit_credit_information']}")
+    if txn.get("payroll_information"):
+        parts.append(f"payroll: {txn['payroll_information']}")
+    if txn.get("import_export_information"):
+        parts.append(f"trade: {txn['import_export_information']}")
+    if txn.get("narration_remarks"):
+        parts.append(f"narration: {txn['narration_remarks']}")
+
+    # 2. Any additional custom populated fields
+    standard_keys = {
+        "order_reference", "invoice_number", "invoice_date", "seller_supplier",
+        "buyer_customer", "item_descriptions", "quantity", "taxable_value",
+        "gst", "total_amount", "currency", "payment_information", "return_information",
+        "delivery_information", "debit_credit_information", "payroll_information",
+        "import_export_information", "narration_remarks", "raw_record", "row_id",
+        "ground_truth_label", "custom_populated_fields",
+    }
+
+    for k, v in txn.items():
+        if k in standard_keys or k.lower() in EXCLUDED_TARGET_KEYS:
+            continue
+        # Double check for category/type/target in key
+        if "voucher" in k.lower() or "target" in k.lower():
+            continue
+        if v is not None and str(v).strip() and str(v).strip().lower() not in ("nan", "null", "none"):
+            parts.append(f"{k}: {str(v).strip()}")
 
     # Filter out empty label prefixes and clean up spacing
     clean_parts = [p for p in parts if len(p.split(":", 1)[1].strip()) > 0]
     return " | ".join(clean_parts) if clean_parts else "unspecified transaction"
+
 
 
 class MajorityClassBaseline:

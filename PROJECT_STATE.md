@@ -149,7 +149,31 @@
 
 ---
 
-## 8. Next Permitted Action
+## 8. Reference Judging Dataset Integration & Schema Generalization
 
-Upon user review and authorization of the Phase 4 report:
+- **Reference Workbook**: `Voucher_Classification_Test_Cases_v2.xlsx` (120 rows × 169 columns, sheet `'Test Cases'`).
+- **Data Security**: Added to `.gitignore` to prevent committing raw judging data; local untracked development fixture.
+- **Schema Structure**: Wide union schema with 14 functional field families (Purchase Orders, GRN, Delivery Notes, Sales Orders, Invoices, Returns, Payments/Receipts, Contra, Journal, Payroll, Job Work, Foreign Trade, Inventory/Stock, Expense).
+- **Category Coverage**:
+  - 24 categories present with balanced support (5 rows each = 120 total).
+  - 3 categories absent (`Advance / Prepayment`, `Attendance`, `Other / Miscellaneous`).
+  - Authoritative 27 taxonomy preserved in `AUTHORITATIVE_VOUCHER_LABELS`; missing categories supported via isolated synthetic regression fixtures (`is_synthetic: True`).
+- **Target Leakage Firewall**:
+  - `Voucher Category` column discovered and partitioned strictly into `CanonicalTransaction.ground_truth_label`.
+  - Stripped from feature mapping, canonical fields, `custom_populated_fields`, and `compact_representation()`.
+  - Zero leakage verified across all 120 rows via `test_strict_zero_target_leakage_audit`.
+- **Wide Schema Normalization**:
+  - Dynamic extraction of populated non-null fields (~9 to 14 fields per transaction) reduces prompt token overhead by ~88% compared to sparse 169-column representation.
+- **Cross-Validation Benchmark (TF-IDF + Logistic Regression)**:
+  - Stratified 5-Fold Cross-Validation Accuracy: **98.33%** (118/120 correct).
+  - Macro-F1: **98.26%**, Weighted-F1: **98.26%**.
+  - Confusion analysis: 2 confusions between `Purchase` and `Sales` due to 12 shared columns, emphasizing the importance of role and reference semantics (`PO Ref` vs `Delivery Ref`).
+- **Test Suite**: 30 passing tests (12 ingestion, 7 baseline/leakage, 3 health, 8 reference workbook).
+
+---
+
+## 9. Next Permitted Action
+
+Upon user authorization of the Reference Dataset Report & Phase Gates:
 Proceed to **Phase 5 — Gemma 4 Integration**.
+

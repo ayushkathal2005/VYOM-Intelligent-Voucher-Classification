@@ -28,7 +28,72 @@ class CanonicalTransaction(BaseModel):
     payroll_information: Optional[str] = Field(default=None, description="Payroll, salary, attendance or employee metadata")
     import_export_information: Optional[str] = Field(default=None, description="Customs, shipping bill, or foreign trade details")
     narration_remarks: Optional[str] = Field(default=None, description="General narration, remarks, or notes")
+    custom_populated_fields: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Meaningful populated non-null fields not mapped to standard canonical attributes (strictly excluding target label)",
+    )
+    ground_truth_label: Optional[str] = Field(
+        default=None,
+        description="Ground truth voucher category if present for evaluation. NEVER used in inference or compact representation.",
+    )
     raw_record: Dict[str, Any] = Field(default_factory=dict, description="Preserved original input fields and raw values")
+
+    def compact_representation(self) -> str:
+        """
+        Generate a compact, information-rich text representation containing ONLY populated fields.
+        STRICT GUARANTEE: Never includes ground_truth_label or any target category column.
+        """
+        parts: List[str] = []
+        if self.order_reference:
+            parts.append(f"order_ref: {self.order_reference}")
+        if self.invoice_number:
+            parts.append(f"doc_no: {self.invoice_number}")
+        if self.invoice_date:
+            parts.append(f"date: {self.invoice_date}")
+        if self.seller_supplier:
+            parts.append(f"supplier: {self.seller_supplier}")
+        if self.buyer_customer:
+            parts.append(f"buyer: {self.buyer_customer}")
+        if self.item_descriptions:
+            parts.append(f"items: {' '.join(str(i) for i in self.item_descriptions)}")
+        if self.quantity is not None:
+            parts.append(f"quantity: {self.quantity}")
+        if self.taxable_value is not None:
+            parts.append(f"taxable_val: {self.taxable_value}")
+        if self.gst is not None and self.gst > 0:
+            parts.append(f"tax: {self.gst}")
+        if self.total_amount is not None:
+            parts.append(f"total_amount: {self.total_amount}")
+        if self.currency and self.currency != "INR":
+            parts.append(f"currency: {self.currency}")
+        if self.payment_information:
+            parts.append(f"payment: {self.payment_information}")
+        if self.return_information:
+            parts.append(f"return: {self.return_information}")
+        if self.delivery_information:
+            parts.append(f"delivery: {self.delivery_information}")
+        if self.debit_credit_information:
+            parts.append(f"accounts: {self.debit_credit_information}")
+        if self.payroll_information:
+            parts.append(f"payroll: {self.payroll_information}")
+        if self.import_export_information:
+            parts.append(f"trade: {self.import_export_information}")
+        if self.narration_remarks:
+            parts.append(f"narration: {self.narration_remarks}")
+
+        # Add custom populated fields (safely ignoring any target labels or empty values)
+        for k, v in self.custom_populated_fields.items():
+            if v is None:
+                continue
+            k_clean = str(k).strip()
+            # Double safety: ensure target label is never emitted
+            if k_clean.lower() in ("voucher category", "category", "target", "label", "voucher_type"):
+                continue
+            v_clean = str(v).strip()
+            if v_clean and v_clean.lower() not in ("nan", "null", "none", ""):
+                parts.append(f"{k_clean}: {v_clean}")
+
+        return " | ".join(parts) if parts else "unspecified transaction"
 
 
 class SchemaWarning(BaseModel):
@@ -56,6 +121,13 @@ class IngestionResult(BaseModel):
     duplicate_identifiers: List[str] = Field(
         default_factory=list, description="Duplicate invoice/document numbers detected"
     )
+    has_target_column: bool = Field(
+        default=False, description="True if a ground truth category column was detected for evaluation"
+    )
+    target_column_name: Optional[str] = Field(
+        default=None, description="Name of the detected target column if present"
+    )
     canonical_transactions: List[CanonicalTransaction] = Field(
         default_factory=list, description="Canonical transactions ready for signals and classification"
     )
+
