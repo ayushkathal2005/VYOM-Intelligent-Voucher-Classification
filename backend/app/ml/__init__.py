@@ -43,6 +43,19 @@ from app.ml.signals import (
     candidate_retriever,
 )
 
+from app.ml.guardrails import (
+    ConfidenceTier,
+    TriageDecision,
+    ContradictionSeverity,
+    AccountingContradiction,
+    GuardrailEvaluation,
+    AccountingContradictionDetector,
+    ConfidenceScorer,
+    SecondPassReasoningEngine,
+    GuardrailsPipeline,
+    guardrails_pipeline,
+)
+
 __all__ = [
     "AUTHORITATIVE_VOUCHER_LABELS",
     "LABEL_TO_ID",
@@ -74,6 +87,16 @@ __all__ = [
     "AccountingSignalsEngine",
     "SemanticCandidateRetriever",
     "candidate_retriever",
+    "ConfidenceTier",
+    "TriageDecision",
+    "ContradictionSeverity",
+    "AccountingContradiction",
+    "GuardrailEvaluation",
+    "AccountingContradictionDetector",
+    "ConfidenceScorer",
+    "SecondPassReasoningEngine",
+    "GuardrailsPipeline",
+    "guardrails_pipeline",
 ]
 
 

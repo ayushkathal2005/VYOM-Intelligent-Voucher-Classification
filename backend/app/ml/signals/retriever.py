@@ -20,6 +20,7 @@ ERP_PREFIX_MAP: Dict[str, str] = {
     "pay-": "Payment",
     "pmt-": "Payment",
     "rcpt-": "Receipt",
+    "rcp-": "Receipt",
     "rct-": "Receipt",
     "rec-": "Receipt",
     "cnt-": "Contra",
@@ -182,9 +183,18 @@ class SemanticCandidateRetriever:
                     score += 0.35
 
             # 10. Pre-Fulfillment Commercial Orders
-            if signals_profile.money_flow == MoneyFlowDirection.ORDER_COMMITMENT:
+            if signals_profile.money_flow == MoneyFlowDirection.ORDER_COMMITMENT or signals_profile.has_order_reference:
                 if cat in ("Purchase Order", "Sales Order", "Job Work - In Order", "Job Work Out Order"):
                     score += 0.25
+                    if ("buyer" in text_lower or "customer" in text_lower or "so" in text_lower) and cat == "Sales Order":
+                        score += 0.20
+                    if ("supplier" in text_lower or "vendor" in text_lower or "po" in text_lower) and cat == "Purchase Order":
+                        score += 0.20
+
+            # 11. Explicit Receipt Collection
+            if any(k in text_lower for k in ("receipt id", "receipt nature", "received amount", "paying organization", "rcp-")):
+                if cat == "Receipt":
+                    score += 0.35
 
             score = max(0.0, min(1.0, score))
             combined_scores.append((card, round(score, 4)))

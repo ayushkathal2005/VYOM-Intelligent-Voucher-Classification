@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 6 — Accounting Signals & Semantic Retrieval**
-> Status: **COMPLETE** (Awaiting user review at Phase 6 Gate)
+> Current Authorized Phase: **Phase 7 — Confidence Scoring & Guardrails Pipeline**
+> Status: **COMPLETE** (Awaiting user review at Phase 7 Gate)
 
 ---
 
@@ -17,8 +17,8 @@
 | 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
 | 4 | Baseline Classifier | COMPLETE | `89e42c6` | Verified (`origin/main`) | Approved |
 | 5 | Gemma 4 Integration | COMPLETE | `cb1303c` | Verified (`origin/main`) | Approved |
-| **6** | **Accounting Signals & Semantic Retrieval** | **COMPLETE** | `6894091` | Verified (`origin/main`) | **Current Phase Gate** |
-| 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
+| 6 | Accounting Signals & Semantic Retrieval | COMPLETE | `4935175` | Verified (`origin/main`) | Approved |
+| **7** | **Confidence & Guardrails** | **COMPLETE** | `bef4e46` | Verified (`origin/main`) | **Current Phase Gate** |
 | 8 | Backend API | PENDING | — | — | Not Authorized |
 | 9 | Connected Dashboard | PENDING | — | — | Not Authorized |
 | 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
@@ -213,10 +213,43 @@
 
 ---
 
-## 11. Next Permitted Action
+## 11. Phase 7 — Confidence Scoring & Guardrails Pipeline Summary
 
-Upon user authorization of the Phase 6 report:
-Proceed to **Phase 7 — Confidence Scoring & Guardrails Pipeline**.
+- **Objective**: Implement enterprise reliability scoring, structural accounting contradiction detection, review queue triage routing, and second-pass arbitration for ambiguous/borderline predictions.
+- **Accounting Contradiction Detector (`backend/app/ml/guardrails/detector.py`)**:
+  - Implements 9 domain integrity rules covering:
+    - Contra external counterparty conflicts (`CONTRA_EXTERNAL_COUNTERPARTY` - CRITICAL)
+    - Contra statutory sales/purchase tax billing (`CONTRA_STATUTORY_TAX` - CRITICAL)
+    - Contra missing internal account pairs (`CONTRA_MISSING_INTERNAL_PAIR` - WARNING)
+    - Sales outward procurement flow inversion (`SALES_OUTWARD_DISBURSEMENT` - CRITICAL)
+    - Purchase inward customer collection inversion (`PURCHASE_INWARD_COLLECTION` - CRITICAL)
+    - Zero/missing monetary totals on physical commercial invoices (`ZERO_AMOUNT_COMMERCIAL_INVOICE` - WARNING)
+    - Return vouchers without negative quantity or reversal references (`RETURN_WITHOUT_RETURN_SIGNALS` - WARNING)
+    - Internal treasury pairs classified as external payments (`INTERNAL_ACCOUNT_AS_PAYMENT` - WARNING)
+    - Cross-border vouchers lacking international trade indicators (`CROSSBORDER_WITHOUT_FOREIGN_INDICATORS` - WARNING)
+- **Confidence Calibration Scorer (`backend/app/ml/guardrails/scorer.py`)**:
+  - Synthesizes model confidence (50%), rank-normalized candidate retriever affinity (30%), and signal compatibility (20%).
+  - Deducts weighted penalties for detected contradictions (-0.35 per critical, -0.12 per warning, -0.04 per info).
+  - Classifies into tiers: `HIGH` (>= 0.85), `MEDIUM` (0.65 - 0.84), `LOW` (< 0.65).
+  - Determines operational routing: `AUTO_VERIFIED`, `FLAGGED_FOR_REVIEW`, or `CRITICAL_REJECTION`.
+- **Second-Pass Reasoning Engine (`backend/app/ml/guardrails/second_pass.py`)**:
+  - Automatically arbitrates borderline classifications, warning contradictions, or close candidate margins.
+  - Re-routes contradicted vouchers to valid accounting counterparts (e.g., Contra with vendor counterparty re-routed to Payment).
+  - Employs disambiguation rules from authoritative voucher cards.
+- **Unified Pipeline Orchestrator (`backend/app/ml/guardrails/pipeline.py`)**:
+  - `GuardrailsPipeline.evaluate_and_classify` unifies signal extraction, retrieval, model classification, contradiction detection, confidence scoring, and second-pass reasoning into a single audit-grade call.
+- **Test Suite Expansion (`backend/tests/test_guardrails.py`)**:
+  - 13 new unit and integration tests covering all contradiction archetypes, scoring math, triage routing, second-pass arbitration, and reference workbook cases.
+  - Full repository test suite: **66 passed, 0 failed (100% green)**.
+  - Frontend production build (`npm run build`): Verified clean Next.js 16.4.0 compilation.
+
+---
+
+## 12. Next Permitted Action
+
+Upon user authorization of the Phase 7 report:
+Proceed to **Phase 8 — Backend REST API**.
+
 
 
 
