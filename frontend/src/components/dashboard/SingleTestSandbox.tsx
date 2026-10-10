@@ -133,11 +133,41 @@ export function SingleTestSandbox() {
           </p>
         </div>
 
-        {/* Inference Mode Indicator */}
-        <div className="flex items-center gap-2">
-          <Badge variant={formData.use_mock ? "neutral" : "gold"} size="sm">
-            {formData.use_mock ? "OFFLINE VERIFIED" : "LIVE GEMMA 4"}
-          </Badge>
+        {/* Inference Mode Switcher */}
+        <div className="flex items-center gap-1 bg-[#050505] p-1 rounded border border-[rgba(191,145,51,0.2)]">
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, mode: "fast" }))}
+            className={`px-2.5 py-1 rounded text-[11px] font-semibold uppercase tracking-wider transition-all ${
+              (formData.mode ?? "fast") === "fast"
+                ? "bg-[#F0AE2C] text-[#050505]"
+                : "text-[#A69A87] hover:text-[#F4EBDD]"
+            }`}
+          >
+            ⚡ Fast
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, mode: "hybrid" }))}
+            className={`px-2.5 py-1 rounded text-[11px] font-semibold uppercase tracking-wider transition-all ${
+              formData.mode === "hybrid"
+                ? "bg-[#F0AE2C] text-[#050505]"
+                : "text-[#A69A87] hover:text-[#F4EBDD]"
+            }`}
+          >
+            ⚖️ Hybrid
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, mode: "ai" }))}
+            className={`px-2.5 py-1 rounded text-[11px] font-semibold uppercase tracking-wider transition-all ${
+              formData.mode === "ai"
+                ? "bg-[#F0AE2C] text-[#050505]"
+                : "text-[#A69A87] hover:text-[#F4EBDD]"
+            }`}
+          >
+            🧠 AI (Gemma 4)
+          </button>
         </div>
       </div>
 

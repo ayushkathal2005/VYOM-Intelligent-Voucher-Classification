@@ -57,7 +57,7 @@ class DatasetStorage:
         with self._lock:
             return list(self.datasets.values())
 
-    def create_job(self, job_id: str, dataset_id: str, total_rows: int) -> Dict[str, Any]:
+    def create_job(self, job_id: str, dataset_id: str, total_rows: int, mode: str = "fast") -> Dict[str, Any]:
         with self._lock:
             job = {
                 "job_id": job_id,
@@ -66,6 +66,7 @@ class DatasetStorage:
                 "total_rows": total_rows,
                 "processed_rows": 0,
                 "progress_percent": 0.0,
+                "mode": mode,
                 "started_at": datetime.now(timezone.utc),
                 "completed_at": None,
                 "error_message": None,

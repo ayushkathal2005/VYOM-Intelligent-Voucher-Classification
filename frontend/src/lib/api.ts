@@ -52,6 +52,7 @@ export interface SingleClassifyRequest {
   items_description?: string;
   custom_populated_fields?: Record<string, any>;
   use_mock?: boolean;
+  mode?: "fast" | "ai" | "hybrid";
 }
 
 export interface ExtractedSignals {
@@ -135,6 +136,7 @@ export interface BatchClassifyJobResponse {
   total_rows: number;
   processed_rows: number;
   progress_percent: number;
+  mode?: string;
   started_at: string;
 }
 
@@ -145,6 +147,7 @@ export interface BatchClassifyJobStatusResponse {
   total_rows: number;
   processed_rows: number;
   progress_percent: number;
+  mode?: string;
   started_at: string;
   completed_at?: string | null;
   error_message?: string | null;
@@ -327,12 +330,13 @@ export const api = {
 
   async startBatchClassify(
     datasetId: string,
+    mode: "fast" | "ai" | "hybrid" = "fast",
     useMock: boolean = true
   ): Promise<BatchClassifyJobResponse> {
     const res = await fetch(`${API_BASE_URL}/api/v1/classify/batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dataset_id: datasetId, use_mock: useMock }),
+      body: JSON.stringify({ dataset_id: datasetId, mode, use_mock: useMock }),
     });
     return handleResponse<BatchClassifyJobResponse>(res);
   },

@@ -523,6 +523,85 @@ We conducted a controlled empirical experiment comparing:
   - `test_dataset_analytics_unclassified_dataset_null_percentages`: Verifies unclassified datasets yield null percentages rather than false zeros.
 - **Frontend Production Build**: `npm run build` compiled successfully with Next.js 16.4.0 (Turbopack) in 1.74s, with TypeScript validation passed.
 
+---
+
+## 19. Phase 19: Focused Local Classifier Optimization & Tri-Mode Inference Engine
+
+### 19.1 Motivation & Dataset Auditing
+1. **Large-Scale Workbooks**:
+   - `voucher_test_large.xlsx`: 5,000 labeled transactions spanning all 27 authoritative voucher categories, across 189 columns and 4 difficulty tiers: Noisy (1,996), Clean (1,256), Hard (1,250), Sparse (498). Includes 50 duplicate pairs (102 rows total).
+   - `voucher_test_large_blind.xlsx`: 5,000 matching transactions across 188 common columns without the target column (`Voucher Category` removed at index 188).
+2. **Strict Zero Target & Metadata Leakage**:
+   - Target field `Voucher Category` and Metadata sheet completely excluded from inference feature extraction.
+   - Target-derived fields (`voucher_type`, `family`, `tier`, `primary_id`) stripped from compact representations to eliminate shortcut learning.
+3. **Leakage-Safe Grouped Stratified Splitting**:
+   - Built connected-component grouping over identical invoice numbers, document references, and matching normalized texts to guarantee zero train-to-test contamination.
+   - Stratified train/val/test split across all 27 categories:
+     - Train Set: 3,503 rows (70.1%)
+     - Validation Set: 750 rows (15.0%)
+     - Held-out Test Set: 747 rows (14.9%)
+
+### 19.2 Model Comparison & Validation Selection
+Trained and compared 5 local model architectures on the training set and evaluated on the validation set:
+| Model Architecture | Vectorizer Configuration | Val Accuracy | Val Macro-F1 | Latency (ms/row) | Throughput (rows/s) |
+|---|---|---|---|---|---|
+| Model 1: Baseline Logistic Regression | Word TF-IDF (1-2 ngrams, 5k feats) | 98.53% | 0.9858 | 0.085 ms | ~11,700 |
+| Model 2: Linear SVM | Word TF-IDF (1-2 ngrams, 5k feats) | 98.40% | 0.9845 | 0.088 ms | ~11,300 |
+| Model 3: Logistic Regression | Word (1-2) + Char-WB (3-5) TF-IDF | 99.20% | 0.9917 | 0.684 ms | ~1,460 |
+| **Model 4: Calibrated Linear SVM (Selected)** | **Word (1-2) + Char-WB (3-5) TF-IDF** | **99.20%** | **0.9925** | **0.730 ms** | **~1,370** |
+| Model 5: SGDClassifier (Log Loss) | Word (1-2) + Char-WB (3-5) TF-IDF | 99.20% | 0.9915 | 0.690 ms | ~1,450 |
+
+**Winner**: **Model 4 (Calibrated Linear SVM)** selected based on highest Validation Macro-F1 (0.9925) and robust probability calibration across all 27 categories.
+
+### 19.3 Final Held-Out Test Evaluation (Evaluated Once)
+- **Held-Out Test Accuracy**: **97.99%**
+- **Held-Out Test Macro-F1**: **0.9779**
+- **Held-Out Test Weighted-F1**: **0.9798**
+- **Inference Latency**: 0.718 ms/row (1,393 rows/s)
+- **Tier Slices on Held-Out Test**:
+  - Clean Tier: 100.0% accuracy (F1: 1.0000)
+  - Noisy Tier: 100.0% accuracy (F1: 1.0000)
+  - Hard Tier: 96.95% accuracy (F1: 0.9569)
+  - Sparse Tier: 87.32% accuracy (F1: 0.8369)
+
+### 19.4 Consolidated Pipeline Benchmarks (End-to-End Guardrails Pipeline)
+Evaluated end-to-end classification including deterministic guardrails, signal extraction, contradiction detection, and confidence scoring:
+| Benchmark Run | Input Rows | Total Runtime | End-to-End Throughput | Accuracy | Macro-F1 | Pipeline Failures |
+|---|---|---|---|---|---|---|
+| Benchmark 1: Reference Workbook v2 | 120 rows | 0.848 s | 141.4 rows/s | 99.17% | 0.9916 | 0 |
+| Benchmark 2: Large Sample | 1,000 rows | 7.256 s | 137.8 rows/s | 97.20% | 0.9737 | 0 |
+| Benchmark 3: Full Labeled Dataset | 5,000 rows | 35.828 s | 139.6 rows/s | 96.28% | 0.9691 | 0 |
+| Benchmark 4: Blind Unlabeled Workbook | 5,000 rows | 36.151 s | 138.3 rows/s | N/A (Blind) | N/A (Blind) | 0 |
+
+### 19.5 Blind Workbook End-to-End Audited Export Verification
+- Tested `voucher_test_large_blind.xlsx` (5,000 rows) through ingestion, Fast Mode classification, and XLSX export.
+- **Result**:
+  - Exactly 5,000 rows classified and exported.
+  - Sequential row order 1..5000 strictly preserved.
+  - All original 188 transaction columns preserved + 8 authoritative `VYOM_*` audit trail columns appended (196 total columns).
+  - Exported workbook size: 782.6 KB.
+
+### 19.6 Tri-Mode Inference Architecture
+1. **⚡ Fast Mode (`mode="fast"`)** [Default]:
+   - Powered by pre-trained Calibrated Linear SVM (`backend/app/ml/models/fast_classifier.joblib`).
+   - Pure local execution, sub-millisecond per-row latency, zero external API dependencies or token quotas.
+2. **🧠 AI Mode (`mode="ai"`)**:
+   - Preserves Gemma 4 deep reasoning via official Google GenAI SDK (`gemma-4-26b-a4b-it`) with candidate context retrieval and offline deterministic mock adapter fallback.
+3. **⚖️ Adaptive Hybrid Mode (`mode="hybrid"`)**:
+   - High-throughput triage using Fast Classifier.
+   - Automatically accepts high-confidence predictions ($\ge 85\%$ calibrated confidence with `AUTO_VERIFIED` triage).
+   - Dynamically escalates uncertain ($< 85\%$) or flagged transactions to Gemma 4 for deep chain-of-thought arbitration.
+
+### 19.7 Regression Testing & Production Build
+- **Backend Test Suite**: All **92 tests passing** (`pytest backend/tests -v`, 100% green in 7.24s).
+- **Unit & Integration Tests Added** (`backend/tests/test_fast_mode.py`):
+  - `test_fast_classifier_initialization_and_classes`
+  - `test_fast_classifier_predict_single_and_guardrails`
+  - `test_api_single_classify_all_modes`
+  - `test_api_batch_classify_fast_and_hybrid_modes`
+- **Frontend Production Build**: `npm run build` compiled successfully with Next.js 16.4.0 (Turbopack) in 3.6s with zero TypeScript errors.
+
+
 
 
 

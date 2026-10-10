@@ -84,6 +84,7 @@ class SingleClassifyRequest(BaseModel):
     items_description: Optional[str] = None
     custom_populated_fields: Dict[str, Any] = Field(default_factory=dict)
     use_mock: Optional[bool] = None
+    mode: Optional[str] = Field(default=None, description="Inference mode: 'fast' (Local SVM), 'ai' (Gemma 4), or 'hybrid'")
 
 
 class SingleClassifyResponse(BaseModel):
@@ -99,6 +100,7 @@ class BatchClassifyRequest(BaseModel):
     dataset_id: str
     use_mock: Optional[bool] = None
     batch_size: Optional[int] = 50
+    mode: Optional[str] = Field(default=None, description="Inference mode: 'fast' (Local SVM), 'ai' (Gemma 4), or 'hybrid'")
 
 
 class BatchClassifyJobResponse(BaseModel):
@@ -110,6 +112,7 @@ class BatchClassifyJobResponse(BaseModel):
     total_rows: int
     processed_rows: int = 0
     progress_percent: float = 0.0
+    mode: Optional[str] = "fast"
     started_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None

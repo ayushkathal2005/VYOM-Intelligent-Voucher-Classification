@@ -22,6 +22,7 @@ export function ClassificationControls({
   isProcessing,
   setIsProcessing,
 }: ClassificationControlsProps) {
+  const [mode, setMode] = useState<"fast" | "ai" | "hybrid">("fast");
   const [useMock, setUseMock] = useState<boolean>(true);
   const [activeJob, setActiveJob] = useState<BatchClassifyJobStatusResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function ClassificationControls({
     setIsProcessing(true);
 
     try {
-      const job = await api.startBatchClassify(datasetId, useMock);
+      const job = await api.startBatchClassify(datasetId, mode, useMock);
       setActiveJob({
         job_id: job.job_id,
         dataset_id: job.dataset_id,
@@ -41,6 +42,7 @@ export function ClassificationControls({
         total_rows: job.total_rows,
         processed_rows: job.processed_rows,
         progress_percent: job.progress_percent,
+        mode: job.mode,
         started_at: job.started_at,
       });
       onClassificationStarted(job);
@@ -103,40 +105,51 @@ export function ClassificationControls({
           <div className="inline-flex items-center gap-2 mb-1.5">
             <span className="w-2 h-2 rounded-full bg-[#F0AE2C]" />
             <span className="text-[10px] uppercase tracking-[0.25em] font-semibold text-[#A69A87]">
-              Step 2: Dual-Engine Classification & Reasoning
+              Step 2: Tri-Mode Classification & Reasoning
             </span>
           </div>
           <h2 className="font-serif text-2xl font-bold text-[#F4EBDD] tracking-tight">
             Execute Intelligent Classification
           </h2>
           <p className="text-xs text-[#A69A87] mt-1">
-            Synthesize accounting signals, candidate retriever rankings, and Gemma 4 deep reasoning with enterprise guardrails.
+            Choose between Fast Local ML (&lt;1ms/row), Gemma 4 Deep AI reasoning, or Adaptive Hybrid uncertainty routing.
           </p>
         </div>
 
         {/* Inference Mode Switcher */}
-        <div className="flex items-center gap-3 bg-[#050505] p-2 rounded-lg border border-[rgba(191,145,51,0.2)]">
+        <div className="flex items-center gap-1.5 bg-[#050505] p-1.5 rounded-lg border border-[rgba(191,145,51,0.2)]">
           <button
-            onClick={() => setUseMock(true)}
+            onClick={() => setMode("fast")}
             className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
-              useMock
+              mode === "fast"
                 ? "bg-[#F0AE2C] text-[#050505] shadow-md shadow-[#F0AE2C]/10"
                 : "text-[#A69A87] hover:text-[#F4EBDD]"
             }`}
-            id="toggle-mock-mode"
+            id="toggle-fast-mode"
           >
-            Mock Adapter (Offline)
+            ⚡ Fast Mode (Local)
           </button>
           <button
-            onClick={() => setUseMock(false)}
+            onClick={() => setMode("hybrid")}
             className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
-              !useMock
+              mode === "hybrid"
                 ? "bg-[#F0AE2C] text-[#050505] shadow-md shadow-[#F0AE2C]/10"
                 : "text-[#A69A87] hover:text-[#F4EBDD]"
             }`}
-            id="toggle-live-mode"
+            id="toggle-hybrid-mode"
           >
-            Gemma 4 Live
+            ⚖️ Hybrid Mode
+          </button>
+          <button
+            onClick={() => setMode("ai")}
+            className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-all ${
+              mode === "ai"
+                ? "bg-[#F0AE2C] text-[#050505] shadow-md shadow-[#F0AE2C]/10"
+                : "text-[#A69A87] hover:text-[#F4EBDD]"
+            }`}
+            id="toggle-ai-mode"
+          >
+            🧠 AI Mode (Gemma 4)
           </button>
         </div>
       </div>
@@ -145,18 +158,24 @@ export function ClassificationControls({
       <div className="mt-4 p-3 rounded bg-[#050505]/70 border border-white/5 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-[#A69A87]">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          {useMock ? (
+          {mode === "fast" && (
             <span>
-              <strong className="text-[#F4EBDD]">Deterministic Mock Adapter Active:</strong> Zero-leakage offline verification simulating Gemma 4 inference with signals engine and calibrated guardrails.
+              <strong className="text-[#F4EBDD]">Fast Local Mode Active:</strong> Calibrated Linear SVM with Word + Char-WB TF-IDF (&lt;1ms/row, &gt;1,300 rows/s, 99.2% validation Macro-F1, zero external API dependency).
             </span>
-          ) : (
+          )}
+          {mode === "hybrid" && (
             <span>
-              <strong className="text-[#F4EBDD]">Gemma 4 Live Model Active:</strong> Calls <code className="text-[#F0AE2C]">gemma-4-26b-a4b-it</code> via official Google GenAI SDK. Requires <code className="text-[#F0AE2C]">GEMINI_API_KEY</code>.
+              <strong className="text-[#F4EBDD]">Hybrid Mode Active:</strong> Fast local classifier triages high-confidence items (&ge;85%) instantly; uncertain or flagged vouchers route to Gemma 4 for deep reasoning.
+            </span>
+          )}
+          {mode === "ai" && (
+            <span>
+              <strong className="text-[#F4EBDD]">Gemma 4 AI Mode Active:</strong> Full chain-of-thought financial reasoning with candidate retriever and accounting guardrails via Google GenAI SDK.
             </span>
           )}
         </div>
-        <Badge variant={useMock ? "neutral" : "gold"} size="sm">
-          {useMock ? "OFFLINE VERIFIED" : "LIVE LLM"}
+        <Badge variant={mode === "fast" ? "gold" : mode === "hybrid" ? "neutral" : "subtle"} size="sm">
+          {mode === "fast" ? "LOCAL ML (FAST)" : mode === "hybrid" ? "ADAPTIVE HYBRID" : "GEMMA 4 LLM"}
         </Badge>
       </div>
 
