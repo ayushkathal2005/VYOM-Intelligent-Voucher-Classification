@@ -78,3 +78,6 @@ Desktop.ini
 *.xls
 Voucher_Classification_Test_Cases*.xlsx
 
+# Temporary benchmarks and scratch scripts
+scratch/
+

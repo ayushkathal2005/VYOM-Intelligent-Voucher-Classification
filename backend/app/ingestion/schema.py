@@ -95,6 +95,72 @@ class CanonicalTransaction(BaseModel):
 
         return " | ".join(parts) if parts else "unspecified transaction"
 
+    def to_compact_dict(self) -> Dict[str, Any]:
+        """
+        Generate a normalized, compact key-value JSON dictionary containing ONLY populated fields.
+        STRICT GUARANTEE: Never includes ground_truth_label or any target category column.
+        """
+        fields: Dict[str, Any] = {}
+        if self.invoice_number:
+            fields["doc_no"] = self.invoice_number
+        if self.invoice_date:
+            fields["date"] = self.invoice_date
+        if self.order_reference:
+            fields["order_ref"] = self.order_reference
+        if self.seller_supplier:
+            fields["supplier"] = self.seller_supplier
+        if self.buyer_customer:
+            fields["customer"] = self.buyer_customer
+        if self.item_descriptions:
+            fields["items"] = self.item_descriptions if len(self.item_descriptions) > 1 else self.item_descriptions[0]
+        if self.quantity is not None:
+            fields["quantity"] = self.quantity
+        if self.taxable_value is not None:
+            fields["taxable_val"] = self.taxable_value
+        if self.gst is not None and self.gst > 0:
+            fields["tax"] = self.gst
+        if self.total_amount is not None:
+            fields["total_amount"] = self.total_amount
+        if self.currency and self.currency != "INR":
+            fields["currency"] = self.currency
+        if self.payment_information:
+            fields["payment"] = self.payment_information
+        if self.return_information:
+            fields["return"] = self.return_information
+        if self.delivery_information:
+            fields["delivery"] = self.delivery_information
+        if self.debit_credit_information:
+            fields["accounts"] = self.debit_credit_information
+        if self.payroll_information:
+            fields["payroll"] = self.payroll_information
+        if self.import_export_information:
+            fields["trade"] = self.import_export_information
+        if self.narration_remarks:
+            fields["narration"] = self.narration_remarks
+
+        # Custom populated non-null fields with target label isolation
+        if self.custom_populated_fields:
+            for k, v in self.custom_populated_fields.items():
+                if v is None:
+                    continue
+                k_clean = str(k).strip()
+                if k_clean.lower() in ("voucher category", "category", "target", "label", "voucher_type"):
+                    continue
+                v_clean = str(v).strip()
+                if v_clean and v_clean.lower() not in ("nan", "null", "none", ""):
+                    fields[k_clean] = v_clean
+
+        return {
+            "row_id": self.row_id,
+            "fields": fields,
+        }
+
+    def to_compact_json(self) -> str:
+        """Serialize compact dict to minimal whitespace JSON string."""
+        import json
+        return json.dumps(self.to_compact_dict(), separators=(",", ":"))
+
+
 
 class SchemaWarning(BaseModel):
     """Warning emitted during dataset schema discovery and parsing."""

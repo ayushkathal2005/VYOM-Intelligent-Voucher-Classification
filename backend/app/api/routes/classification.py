@@ -21,8 +21,10 @@ logger = logging.getLogger("vyom.api.classification")
 router = APIRouter(prefix="/classify", tags=["Classification"])
 
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Optional[bool]):
-    """Background task processing all transactions in a dataset sequentially."""
+    """Background task processing all transactions in a dataset with bounded concurrency."""
     ds = dataset_storage.get_dataset(dataset_id)
     if not ds:
         dataset_storage.update_job_progress(job_id, 0, status="FAILED", error_message="Dataset not found.")
@@ -34,20 +36,43 @@ def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Option
     classifier = GemmaClassifier(force_mock=use_mock) if use_mock is not None else GemmaClassifier()
     pipeline = GuardrailsPipeline(classifier=classifier)
 
+    # Safe bounded concurrency: 4 workers for live API, 1 for mock adapter
+    max_workers = 4 if not classifier.is_mock else 1
+
     try:
-        for idx, t in enumerate(txns, start=1):
-            try:
-                result, evaluation = pipeline.evaluate_and_classify(t)
-            except Exception as row_err:
-                logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
-                fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
-                result, evaluation = fallback_pipe.evaluate_and_classify(t)
-                evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
+        if max_workers > 1:
+            completed_count = 0
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_txn = {
+                    executor.submit(pipeline.evaluate_and_classify, t): t
+                    for t in txns
+                }
+                for future in as_completed(future_to_txn):
+                    t = future_to_txn[future]
+                    try:
+                        result, evaluation = future.result()
+                    except Exception as row_err:
+                        logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
+                        fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
+                        result, evaluation = fallback_pipe.evaluate_and_classify(t)
+                        evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
 
-            dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
+                    dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
+                    completed_count += 1
+                    dataset_storage.update_job_progress(job_id, processed_rows=completed_count, status="PROCESSING")
+        else:
+            for idx, t in enumerate(txns, start=1):
+                try:
+                    result, evaluation = pipeline.evaluate_and_classify(t)
+                except Exception as row_err:
+                    logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
+                    fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
+                    result, evaluation = fallback_pipe.evaluate_and_classify(t)
+                    evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
 
-            # Update progress incrementally on every row for real-time UI feedback
-            dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
+                dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
+                # Update progress incrementally on every row for real-time UI feedback
+                dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
 
         dataset_storage.update_job_progress(job_id, processed_rows=total, status="COMPLETED")
         logger.info("Batch classification job '%s' completed successfully (%d rows).", job_id, total)

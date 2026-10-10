@@ -248,3 +248,34 @@ def test_no_data_rows_xlsx_rejected():
     file_bytes = create_sample_xlsx_bytes(headers, [])
     with pytest.raises(IngestionError, match="contains no transaction rows"):
         parse_transaction_file(file_bytes, "no_rows.xlsx")
+
+
+def test_canonical_transaction_compact_dict_and_json():
+    """Verify compact dict and JSON representation exclude nulls and isolate target labels."""
+    from app.ingestion.schema import CanonicalTransaction
+
+    txn = CanonicalTransaction(
+        row_id=42,
+        seller_supplier="Acme Industrial",
+        invoice_number="INV-4200",
+        total_amount=15500.0,
+        ground_truth_label="Purchase",
+        custom_populated_fields={"Cost_Center": "ENG-01", "Voucher Category": "Purchase"},
+    )
+
+    compact_dict = txn.to_compact_dict()
+    assert compact_dict["row_id"] == 42
+    assert compact_dict["fields"]["supplier"] == "Acme Industrial"
+    assert compact_dict["fields"]["doc_no"] == "INV-4200"
+    assert compact_dict["fields"]["total_amount"] == 15500.0
+    assert compact_dict["fields"]["Cost_Center"] == "ENG-01"
+
+    # Verify target label isolation in compact dict
+    assert "ground_truth_label" not in compact_dict
+    assert "ground_truth_label" not in compact_dict["fields"]
+    assert "Voucher Category" not in compact_dict["fields"]
+
+    compact_json = txn.to_compact_json()
+    assert '"supplier":"Acme Industrial"' in compact_json
+    assert "Purchase" not in compact_json
+

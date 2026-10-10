@@ -16,6 +16,7 @@ from app.ml.guardrails.detector import AccountingContradictionDetector
 from app.ml.guardrails.scorer import ConfidenceScorer
 from app.ml.guardrails.second_pass import SecondPassReasoningEngine
 from app.ml.guardrails.pipeline import GuardrailsPipeline, guardrails_pipeline
+from app.ml.gemma.client import GemmaClassifier
 from app.ml.fixtures.reference_workbook_fixture import load_reference_workbook
 
 
@@ -260,7 +261,7 @@ def test_second_pass_re_routes_sales_to_purchase():
 # -----------------------------------------------------------------------------
 def test_guardrails_pipeline_end_to_end_on_clean_purchase():
     """Verify GuardrailsPipeline processes clean purchase to AUTO_VERIFIED state."""
-    pipeline = GuardrailsPipeline()
+    pipeline = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
     txn = CanonicalTransaction(
         row_id=30,
         doc_no="PUR-1234",
@@ -285,7 +286,7 @@ def test_guardrails_pipeline_on_reference_workbook():
         pytest.skip("Voucher_Classification_Test_Cases_v2.xlsx not present on disk.")
 
     txns, labels = load_reference_workbook(path)
-    pipeline = GuardrailsPipeline()
+    pipeline = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
 
     auto_verified_count = 0
     total_evaluated = 0
