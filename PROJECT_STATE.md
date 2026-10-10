@@ -14,7 +14,7 @@
 | 0 | Repository Audit | COMPLETE | `8a2dc3c` | Verified (`origin/main`) | Approved |
 | 1 | Project Foundation | COMPLETE | `0d12553` | Verified (`origin/main`) | Approved |
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
-| **3** | **Data Ingestion** | **COMPLETE** | Pending | Verified (Dry-run OK) | **Current Phase Gate** |
+| **3** | **Data Ingestion** | **COMPLETE** | `e7e1dac` | Verified (`origin/main`) | **Current Phase Gate** |
 | 4 | Baseline Classifier | PENDING | — | — | Not Authorized |
 | 5 | Gemma 4 Integration | PENDING | — | — | Not Authorized |
 | 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
