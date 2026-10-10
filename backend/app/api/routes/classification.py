@@ -36,12 +36,18 @@ def run_batch_classification_task(job_id: str, dataset_id: str, use_mock: Option
 
     try:
         for idx, t in enumerate(txns, start=1):
-            result, evaluation = pipeline.evaluate_and_classify(t)
+            try:
+                result, evaluation = pipeline.evaluate_and_classify(t)
+            except Exception as row_err:
+                logger.error("Error classifying row %d: %s. Applying fallback.", t.row_id, str(row_err))
+                fallback_pipe = GuardrailsPipeline(classifier=GemmaClassifier(force_mock=True))
+                result, evaluation = fallback_pipe.evaluate_and_classify(t)
+                evaluation.audit_notes.append(f"Row fallback applied: {str(row_err)}")
+
             dataset_storage.save_prediction(dataset_id, t.row_id, result, evaluation)
 
-            # Update progress every 10 rows or upon completion
-            if idx % 10 == 0 or idx == total:
-                dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
+            # Update progress incrementally on every row for real-time UI feedback
+            dataset_storage.update_job_progress(job_id, processed_rows=idx, status="PROCESSING")
 
         dataset_storage.update_job_progress(job_id, processed_rows=total, status="COMPLETED")
         logger.info("Batch classification job '%s' completed successfully (%d rows).", job_id, total)
@@ -110,6 +116,7 @@ def start_batch_classification(payload: BatchClassifyRequest, background_tasks: 
 
 
 @router.get("/jobs/{job_id}", response_model=BatchClassifyJobResponse)
+@router.get("/batch/{job_id}/status", response_model=BatchClassifyJobResponse)
 def get_job_status(job_id: str):
     """Poll the status and progress percentage of a running or completed classification job."""
     job = dataset_storage.get_job(job_id)

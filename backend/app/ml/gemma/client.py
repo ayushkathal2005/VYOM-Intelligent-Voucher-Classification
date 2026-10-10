@@ -121,8 +121,15 @@ class GemmaClassifier:
             )
 
         except Exception as e:
-            logger.error("Live Gemini classification failed for row %d: %s", row_id, str(e))
-            raise RuntimeError(f"Gemma 4 API request failed: {str(e)}") from e
+            logger.warning(
+                "Live Gemini classification failed for row %d: %s. Falling back to local signals reasoning.",
+                row_id,
+                str(e),
+            )
+            fallback_res = MockGemmaAdapter.classify_transaction(txn)
+            fallback_res.model_name = f"{self.model_name} (local fallback)"
+            fallback_res.raw_model_output = f"Fallback due to: {str(e)}"
+            return fallback_res
 
     def classify_batch(
         self,
@@ -150,6 +157,15 @@ class GemmaClassifier:
                 data = json.loads(match.group(0))
             else:
                 raise ValueError(f"Failed to decode valid JSON from model output: {raw_text}")
+
+        # Handle list responses if model wrapped object in array
+        if isinstance(data, list):
+            if len(data) > 0 and isinstance(data[0], dict):
+                data = data[0]
+            else:
+                raise ValueError(f"Model returned list with no dict items: {raw_text}")
+        elif not isinstance(data, dict):
+            raise ValueError(f"Model returned non-dict JSON: {type(data)}")
 
         # Ensure normalized category
         cat_raw = data.get("category", "")

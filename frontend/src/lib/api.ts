@@ -333,7 +333,7 @@ export const api = {
   },
 
   async getBatchJobStatus(jobId: string): Promise<BatchClassifyJobStatusResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/v1/classify/batch/${jobId}/status`);
+    const res = await fetch(`${API_BASE_URL}/api/v1/classify/jobs/${jobId}`);
     return handleResponse<BatchClassifyJobStatusResponse>(res);
   },
 

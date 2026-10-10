@@ -154,6 +154,11 @@ def test_batch_classification_workflow():
     assert poll_data["processed_rows"] == 2
     assert poll_data["progress_percent"] == 100.0
 
+    # Also verify route alias /batch/{job_id}/status
+    alias_resp = client.get(f"/api/v1/classify/batch/{job_id}/status")
+    assert alias_resp.status_code == 200
+    assert alias_resp.json()["status"] == "COMPLETED"
+
 
 # -----------------------------------------------------------------------------
 # 5. Predictions Query, Triage Filtering & Human Override

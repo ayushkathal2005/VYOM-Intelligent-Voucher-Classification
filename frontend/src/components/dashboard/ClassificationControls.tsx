@@ -81,7 +81,7 @@ export function ClassificationControls({
           }
         }
       } catch (err: any) {
-        // network glitch retry
+        console.warn("Batch status poll retry:", err);
       }
     }, 800);
 
