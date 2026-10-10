@@ -1,14 +1,37 @@
 "use client";
 
-import React from "react";
-import Image from "next/image";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/Button";
+import { CoinCanvas } from "./3d/CoinCanvas";
 
 interface HeroSectionProps {
   onLaunchClick?: () => void;
 }
 
 export function HeroSection({ onLaunchClick }: HeroSectionProps) {
+  const [introRevealed, setIntroRevealed] = useState<boolean>(false);
+
+  // Safety fallback: ensure editorial copy is fully revealed after 2.2s even if model loading takes time
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (prefersReduced) {
+        setIntroRevealed(true);
+        return;
+      }
+    }
+
+    const timer = setTimeout(() => {
+      setIntroRevealed(true);
+    }, 2200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleIntroComplete = () => {
+    setIntroRevealed(true);
+  };
+
   return (
     <section className="relative min-h-screen pt-28 pb-16 flex items-center justify-center overflow-hidden bg-[#050505]">
       {/* Background ambient gold gradient glow */}
@@ -20,7 +43,13 @@ export function HeroSection({ onLaunchClick }: HeroSectionProps) {
       <div className="max-w-7xl mx-auto px-6 sm:px-8 w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Column: Editorial Headline & Copy */}
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-8 text-left">
+          <div
+            className={`lg:col-span-6 flex flex-col justify-center space-y-8 text-left transition-all duration-1000 ease-out ${
+              introRevealed
+                ? "opacity-100 translate-y-0"
+                : "opacity-40 translate-y-2"
+            }`}
+          >
             {/* Fine uppercase section label */}
             <div className="inline-flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-[#F0AE2C]" />
@@ -123,37 +152,15 @@ export function HeroSection({ onLaunchClick }: HeroSectionProps) {
             </div>
           </div>
 
-          {/* Right Column / Center: Dominant Cinematic Glass-Jar Visual */}
+          {/* Right Column / Center: Dominant Cinematic 3D Gold Coin Visual */}
           <div className="lg:col-span-6 flex items-center justify-center relative">
-            {/* Ambient luxury halo behind jar */}
-            <div className="absolute inset-0 bg-radial from-[#F0AE2C]/15 via-transparent to-transparent rounded-full filter blur-3xl scale-95 pointer-events-none" />
+            {/* Ambient luxury halo behind coin */}
+            <div
+              className="absolute inset-0 bg-radial from-[#F0AE2C]/18 via-transparent to-transparent rounded-full filter blur-3xl scale-95 pointer-events-none"
+              aria-hidden="true"
+            />
 
-            <div className="relative w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden border border-[rgba(191,145,51,0.2)] bg-[#0B0805] shadow-2xl shadow-black/80 group">
-              <Image
-                src="/hero-glass-jar.jpg"
-                alt="Cinematic luxury glass vessel illuminating financial accounting intelligence"
-                width={700}
-                height={700}
-                priority
-                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-              />
-
-              {/* Glass subtle overlay reflection */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent pointer-events-none" />
-
-              {/* Minimal floating indicator tag inside glass frame */}
-              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between px-4 py-2.5 rounded bg-[#0B0805]/80 backdrop-blur-md border border-[rgba(191,145,51,0.25)]">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F0AE2C]" />
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-[#F4EBDD]">
-                    Voucher Intelligence
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#A69A87]">
-                  27 Authoritative Classes
-                </span>
-              </div>
-            </div>
+            <CoinCanvas onIntroComplete={handleIntroComplete} />
           </div>
         </div>
       </div>
