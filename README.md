@@ -3,6 +3,35 @@
 > **Hacktober Fest | Elevate Open Source AI Hackathon**
 >
 > **Selected Problem Statement:** VYOM+ — Intelligent Voucher Classification Using Open-Source LLMs
+>
+> **Implementation Status:** Production Ready | 100% Green Verification (83/83 Tests Passed)
+> **AI Architecture:** Google Gemma 4 (`gemma-4-26b-a4b-it`) via `google-genai` + Dual Accounting Signals Engine + 9-Rule Contradiction Guardrails
+> **Full Stack:** Next.js 16 (React 19 / Turbopack / Dark Crystal Aesthetic) + FastAPI (Python 3.12+ / Pydantic v2) + Docker Compose
+
+---
+
+### ⚡ Quickstart & Verification
+
+#### 1. One-Click Development Launchers
+- **Windows (PowerShell)**: `.\start.ps1`
+- **Linux / macOS (Bash)**: `./start.sh`
+
+#### 2. Production Docker Compose
+```bash
+docker compose up --build -d
+```
+- **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
+- **Interactive OpenAPI Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Backend Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+
+#### 3. Automated Verification Suite
+```powershell
+.\run_tests.ps1    # PowerShell (Windows)
+./run_tests.sh     # Bash (Linux / macOS)
+```
+> For complete deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md) and [SETUP.md](SETUP.md). For authoritative phase-gated audit trails, see [PROJECT_STATE.md](PROJECT_STATE.md).
+
+---
 
 ## 1. Executive Summary
 
