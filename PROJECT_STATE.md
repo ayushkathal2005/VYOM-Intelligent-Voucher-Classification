@@ -15,7 +15,7 @@
 | 1 | Project Foundation | COMPLETE | `0d12553` | Verified (`origin/main`) | Approved |
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
 | 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
-| **4** | **Baseline Classifier** | **COMPLETE** | Pending | Verified (Dry-run OK) | **Current Phase Gate** |
+| **4** | **Baseline Classifier** | **COMPLETE** | `faeca77` | Verified (`origin/main`) | **Current Phase Gate** |
 | 5 | Gemma 4 Integration | PENDING | — | — | Not Authorized |
 | 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
 | 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
