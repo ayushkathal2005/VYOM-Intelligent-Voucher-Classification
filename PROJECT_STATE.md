@@ -20,7 +20,7 @@
 | 6 | Accounting Signals & Semantic Retrieval | COMPLETE | `4935175` | Verified (`origin/main`) | Approved |
 | 7 | Confidence & Guardrails | COMPLETE | `bef4e46` | Verified (`origin/main`) | Approved |
 | 8 | Backend REST API | COMPLETE | `369f67f` | Verified (`origin/main`) | Approved |
-| **9** | **Connected Dashboard** | **COMPLETE** | Pending | Pending (`origin/main`) | **Current Phase Gate** |
+| **9** | **Connected Dashboard** | **COMPLETE** | `937ed96` | Verified (`origin/main`) | **Current Phase Gate** |
 | 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
 
