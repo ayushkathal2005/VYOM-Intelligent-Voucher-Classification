@@ -210,3 +210,20 @@ class TaxonomyCardResponse(BaseModel):
     negative_signals: List[str]
     common_confusion_pairs: List[str]
     disambiguation_rule: str
+
+
+# -----------------------------------------------------------------------------
+# Evaluation & Benchmark Schemas
+# -----------------------------------------------------------------------------
+class EvaluationMetricsResponse(BaseModel):
+    """Multi-class model evaluation, accuracy, F1, and confusion metrics."""
+
+    dataset_id: str
+    total_samples: int
+    accuracy: float
+    macro_f1: float
+    weighted_f1: float
+    per_class_metrics: Dict[str, Dict[str, Any]]
+    top_confused_pairs: List[Dict[str, Any]]
+    triage_analytics: Dict[str, Any]
+

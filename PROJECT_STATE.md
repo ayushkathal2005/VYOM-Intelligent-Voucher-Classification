@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 9 — Connected Dashboard & Interactive Review Interface**
-> Status: **COMPLETE** (Awaiting user review at Phase 9 Gate)
+> Current Authorized Phase: **Phase 10 — Robustness, Edge Cases, Stress Testing & Model Evaluation**
+> Status: **COMPLETE** (Awaiting user review at Phase 10 Gate)
 
 ---
 
@@ -20,8 +20,8 @@
 | 6 | Accounting Signals & Semantic Retrieval | COMPLETE | `4935175` | Verified (`origin/main`) | Approved |
 | 7 | Confidence & Guardrails | COMPLETE | `bef4e46` | Verified (`origin/main`) | Approved |
 | 8 | Backend REST API | COMPLETE | `369f67f` | Verified (`origin/main`) | Approved |
-| **9** | **Connected Dashboard** | **COMPLETE** | `937ed96` | Verified (`origin/main`) | **Current Phase Gate** |
-| 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
+| 9 | Connected Dashboard | COMPLETE | `937ed96` | Verified (`origin/main`) | Approved |
+| **10** | **Robustness & Evaluation** | **COMPLETE** | *(pending commit)* | Verified (`origin/main`) | **Current Phase Gate** |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
 
 
@@ -328,10 +328,50 @@
 
 ---
 
-## 14. Next Permitted Action
+## 14. Phase 10 — Robustness, Edge Cases, Stress Testing & Model Evaluation Summary
 
-Upon user authorization of the Phase 9 report:
-Proceed to **Phase 10 — Robustness, Edge Cases, Stress Testing & Model Evaluation**.
+- **Objective**: Harden the VYOM+ platform against extreme real-world ERP variance, malformed inputs, currency notation nuances, and adversarial contradiction attacks; build a comprehensive multi-class evaluation engine with full 27-class metrics; and validate end-to-end performance on the reference judging dataset with strict zero target-leakage guarantees.
+- **Evaluation Engine Architecture (`backend/app/ml/evaluation.py`)**:
+  - `compute_multiclass_metrics`: Full 27-class confusion matrix, Macro-F1, Micro-F1, Weighted-F1, Balanced Accuracy, per-class Precision/Recall/F1/Support, and Top-3 / Top-5 candidate retriever recall metrics.
+  - `compute_triage_analytics`: Breakdown of operational routing across `AUTO_VERIFIED`, `FLAGGED_FOR_REVIEW`, and `CRITICAL_REJECTION`, including mean confidence scores per triage bucket.
+  - `evaluate_classifier_performance`: Backward-compatible evaluation entrypoint for classical baselines and cross-validation fixtures.
+  - `run_benchmark_on_dataset`: Automated benchmark pipeline reading any ground-truth dataset without leakage, executing multi-class scoring, and compiling audit reports.
+- **REST API Analytics Enhancement (`backend/app/api/`)**:
+  - `EvaluationMetricsResponse` schema added to `backend/app/api/schemas.py`.
+  - Endpoint `GET /api/v1/datasets/{dataset_id}/analytics/evaluate` added to `backend/app/api/routes/analytics.py` returning full multi-class performance statistics and confusion distributions on ingested datasets with ground truth labels.
+- **Robustness & Stress Test Suite (`backend/tests/test_robustness.py`)**:
+  - `test_extreme_malformed_and_unicode_records`: Validates graceful degradation on empty objects, unicode emojis, control characters, NaN strings, and null fields without unhandled exceptions.
+  - `test_currency_symbols_and_accounting_negatives_parsing`: Verifies regex extraction and normalization of accounting negative parentheses (`(1,500.00)` -> `-1500.0`) and international currency symbols (`$`, `€`, `₹`, `£`).
+  - `test_sparse_and_extra_wide_erp_headers`: Validates resilience on wide enterprise tables containing 15+ unmapped custom ERP columns (SAP/Oracle attributes) without performance degradation or signal corruption.
+  - `test_accounting_confusion_pairs_disambiguation`: Verifies accurate semantic discrimination on high-risk confusion pairs:
+    - Payment vs Contra (external vendor counterparty vs internal treasury accounts)
+    - Purchase vs Purchase Order (commercial invoice vs non-financial commitment)
+    - Receipt vs Sales Return Credit Note (inward collection vs sales return credit note)
+  - `test_all_nine_contradiction_attacks_detected`: Tests adversarial synthetic payloads triggering every single contradiction rule in the guardrails matrix:
+    - `CONTRA_WITH_EXTERNAL_VENDOR`
+    - `CONTRA_WITH_STATUTORY_TAX`
+    - `SALES_OUTWARD_DISBURSEMENT`
+    - `PURCHASE_INWARD_COLLECTION`
+    - `ZERO_AMOUNT_COMMERCIAL_INVOICE`
+    - `RETURN_WITHOUT_RETURN_SIGNALS`
+    - `INTERNAL_ACCOUNT_AS_PAYMENT`
+    - `PAYROLL_WITHOUT_SALARY_COUNTERPARTY`
+    - `ORDER_WITH_SETTLED_MONEY_FLOW`
+  - `test_evaluation_multiclass_metrics_calculation`: Mathematically verifies balanced accuracy, Macro/Micro/Weighted F1, and Top-k retriever recall calculations.
+  - `test_batch_throughput_benchmark`: Verifies high-throughput classification of 100 enterprise transactions in under 500ms in offline mock mode.
+  - `test_reference_workbook_evaluation_benchmark_end_to_end`: Runs end-to-end evaluation across all 120 reference test cases covering all 27 categories, confirming zero-leakage quarantine, 100% top-5 candidate retriever recall, and 74.17% zero-shot accuracy.
+- **Verification & Builds**:
+  - Backend test suite: **83 passed, 0 failed across all 9 test suites (100% green)**.
+  - Frontend production build (`npm.cmd run build`): Next.js 16.4.0 (Turbopack) compiled cleanly in 2.2s with zero TypeScript / React errors.
+  - Strict zero-leakage isolation verified: `Voucher_Classification_Test_Cases_v2.xlsx` remains in `.gitignore` and quarantined from all Git commits.
+
+---
+
+## 15. Next Permitted Action
+
+Upon user authorization of the Phase 10 report:
+Proceed to **Phase 11 — Release, Packaging & Final Verification**.
+
 
 
 

@@ -4,7 +4,7 @@ from collections import Counter
 from fastapi import APIRouter, HTTPException
 
 from app.api.storage import dataset_storage
-from app.api.schemas import AnalyticsResponse
+from app.api.schemas import AnalyticsResponse, EvaluationMetricsResponse
 from app.ml.guardrails.models import TriageDecision
 
 router = APIRouter(prefix="/datasets/{dataset_id}/analytics", tags=["Analytics"])
@@ -81,3 +81,66 @@ def get_dataset_analytics(dataset_id: str):
         review_queue_percentage=round((review_queue_count / total_txns) * 100.0, 1),
         human_override_count=override_count,
     )
+
+
+@router.get("/evaluate", response_model=EvaluationMetricsResponse)
+def evaluate_classified_dataset(dataset_id: str):
+    """
+    Evaluate multi-class accuracy, Macro-F1, per-class metrics, and confusion pairs
+    if ground-truth voucher labels are present in the dataset's raw ingested records.
+    """
+    from app.ml.evaluation import compute_multiclass_metrics, compute_triage_analytics
+    from app.ml.taxonomy import normalize_voucher_label
+
+    ds = dataset_storage.get_dataset(dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found.")
+
+    all_preds = dataset_storage.get_predictions(dataset_id)
+    if not all_preds:
+        raise HTTPException(status_code=400, detail="Dataset has not been classified yet.")
+
+    txns_by_row = {t.row_id: t for t in ds["transactions"]}
+    y_true = []
+    y_pred = []
+    evaluations = []
+
+    for row_id, item in all_preds.items():
+        txn = txns_by_row.get(row_id)
+        if not txn or not txn.raw_record:
+            continue
+
+        raw = txn.raw_record
+        true_label = None
+        for k, v in raw.items():
+            if "category" in k.strip().lower() or "voucher type" in k.strip().lower():
+                true_label = v
+                break
+
+        if true_label is not None:
+            norm_true = normalize_voucher_label(str(true_label))
+            if norm_true:
+                y_true.append(norm_true)
+                y_pred.append(item["result"].prediction.category)
+                evaluations.append(item["evaluation"])
+
+    if not y_true:
+        raise HTTPException(
+            status_code=422,
+            detail="No ground-truth target label column found in raw dataset records to evaluate against.",
+        )
+
+    metrics = compute_multiclass_metrics(y_true, y_pred)
+    triage = compute_triage_analytics(evaluations)
+
+    return EvaluationMetricsResponse(
+        dataset_id=dataset_id,
+        total_samples=metrics["total_samples"],
+        accuracy=metrics["accuracy"],
+        macro_f1=metrics["macro_f1"],
+        weighted_f1=metrics["weighted_f1"],
+        per_class_metrics=metrics["per_class"],
+        top_confused_pairs=metrics["top_confusions"],
+        triage_analytics=triage,
+    )
+
