@@ -8,6 +8,51 @@ interface AnalyticsOverviewProps {
   isLoading: boolean;
 }
 
+/**
+ * Safely format a percentage KPI from authoritative percent and count values.
+ * - Displays "0%" when metric is genuinely zero.
+ * - Displays "N/A" when value cannot be calculated (denominator missing, 0, or invalid).
+ * - Never converts an API error into zero.
+ */
+function formatKpiPercentage(
+  percentValue: number | null | undefined,
+  countValue: number | null | undefined,
+  totalTransactions: number | null | undefined
+): string {
+  if (
+    totalTransactions === undefined ||
+    totalTransactions === null ||
+    totalTransactions <= 0 ||
+    isNaN(totalTransactions)
+  ) {
+    return "N/A";
+  }
+
+  if (percentValue !== undefined && percentValue !== null && !isNaN(percentValue)) {
+    return percentValue === 0 ? "0%" : `${percentValue}%`;
+  }
+
+  if (countValue !== undefined && countValue !== null && !isNaN(countValue)) {
+    if (countValue === 0) return "0%";
+    const calc = Math.round((countValue / totalTransactions) * 1000) / 10;
+    return `${calc}%`;
+  }
+
+  return "N/A";
+}
+
+/**
+ * Safely format row count display.
+ * - Displays "X rows" when count is a valid number (including 0).
+ * - Displays "N/A rows" when count is undefined/null/NaN.
+ */
+function formatKpiRowCount(count: number | null | undefined, unit: string = "rows"): string {
+  if (count === null || count === undefined || isNaN(count)) {
+    return `N/A ${unit}`;
+  }
+  return `${count} ${unit}`;
+}
+
 export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewProps) {
   if (isLoading) {
     return (
@@ -32,6 +77,7 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
   );
 
   const topCategoryCount = sortedCategories.length > 0 ? sortedCategories[0][1] : 1;
+  const contradictionRecords = analytics.contradiction_breakdown || analytics.contradiction_counts || {};
 
   return (
     <div className="w-full space-y-6">
@@ -44,10 +90,10 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-3xl font-bold text-[#F4EBDD]">
-              {analytics.total_transactions}
+              {analytics.total_transactions ?? 0}
             </span>
             <span className="text-xs text-[#A69A87] font-mono">
-              ({analytics.processed_transactions} processed)
+              ({analytics.processed_transactions ?? analytics.total_transactions ?? 0} processed)
             </span>
           </div>
           <div className="mt-3 text-[11px] text-[#A69A87] flex items-center gap-1.5">
@@ -63,10 +109,14 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-3xl font-bold text-emerald-400">
-              {analytics.auto_verified_percentage}%
+              {formatKpiPercentage(
+                analytics.auto_verified_percentage,
+                analytics.auto_verified_count,
+                analytics.total_transactions
+              )}
             </span>
             <span className="text-xs text-emerald-300/80 font-mono">
-              ({analytics.auto_verified_count} rows)
+              ({formatKpiRowCount(analytics.auto_verified_count)})
             </span>
           </div>
           <div className="mt-3 text-[11px] text-emerald-400/90 flex items-center gap-1.5">
@@ -82,10 +132,14 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-3xl font-bold text-amber-400">
-              {analytics.flagged_percentage}%
+              {formatKpiPercentage(
+                analytics.flagged_percentage ?? analytics.review_queue_percentage,
+                analytics.flagged_for_review_count,
+                analytics.total_transactions
+              )}
             </span>
             <span className="text-xs text-amber-300/80 font-mono">
-              ({analytics.flagged_for_review_count} rows)
+              ({formatKpiRowCount(analytics.flagged_for_review_count)})
             </span>
           </div>
           <div className="mt-3 text-[11px] text-amber-400/90 flex items-center gap-1.5">
@@ -101,10 +155,14 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-3xl font-bold text-red-400">
-              {analytics.critical_rejection_percentage}%
+              {formatKpiPercentage(
+                analytics.critical_rejection_percentage,
+                analytics.critical_rejection_count,
+                analytics.total_transactions
+              )}
             </span>
             <span className="text-xs text-red-300/80 font-mono">
-              ({analytics.critical_rejection_count} rows)
+              ({formatKpiRowCount(analytics.critical_rejection_count)})
             </span>
           </div>
           <div className="mt-3 text-[11px] text-red-400/90 flex items-center gap-1.5">
@@ -120,7 +178,11 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-serif text-3xl font-bold text-[#F4EBDD]">
-              {(analytics.average_confidence * 100).toFixed(1)}%
+              {analytics.average_confidence !== undefined &&
+              analytics.average_confidence !== null &&
+              !isNaN(analytics.average_confidence)
+                ? `${(analytics.average_confidence * 100).toFixed(1)}%`
+                : "N/A"}
             </span>
             <span className="text-xs text-[#A69A87] font-mono">
               / 100.0%
@@ -128,7 +190,12 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </div>
           <div className="mt-3 text-[11px] text-[#A69A87] flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#F0AE2C]" />
-            <span>{analytics.overridden_count} Overrides Applied</span>
+            <span>
+              {formatKpiRowCount(
+                analytics.overridden_count ?? analytics.human_override_count ?? 0,
+                "Overrides Applied"
+              )}
+            </span>
           </div>
         </div>
       </div>
@@ -217,17 +284,17 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
                 Contradictions Detected
               </h3>
               <span className="text-xs font-mono text-[#F0AE2C]">
-                {Object.values(analytics.contradiction_breakdown || {}).reduce((a, b) => a + b, 0)} Total
+                {Object.values(contradictionRecords).reduce((a, b) => a + b, 0)} Total
               </span>
             </div>
 
             <div className="mt-3 space-y-2 max-h-36 overflow-y-auto pr-1">
-              {Object.keys(analytics.contradiction_breakdown || {}).length === 0 ? (
+              {Object.keys(contradictionRecords).length === 0 ? (
                 <p className="text-xs text-emerald-400 py-2">
                   No structural accounting contradictions triggered.
                 </p>
               ) : (
-                Object.entries(analytics.contradiction_breakdown).map(([rule, count]) => (
+                Object.entries(contradictionRecords).map(([rule, count]) => (
                   <div
                     key={rule}
                     className="flex items-center justify-between text-xs p-2 bg-[#11100E] rounded border border-white/5"

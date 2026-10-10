@@ -17,22 +17,33 @@ def get_dataset_analytics(dataset_id: str):
     if not ds:
         raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found.")
 
+    dataset_total_rows = ds.get("total_rows", 0)
     all_preds = dataset_storage.get_predictions(dataset_id)
-    total_txns = len(all_preds)
+    processed_count = len(all_preds)
+    total_txns = max(dataset_total_rows, processed_count)
 
-    if total_txns == 0:
+    if total_txns == 0 or processed_count == 0:
         return AnalyticsResponse(
             dataset_id=dataset_id,
-            total_transactions=0,
+            total_transactions=total_txns,
+            processed_transactions=processed_count,
+            auto_verified_count=0,
+            flagged_for_review_count=0,
+            critical_rejection_count=0,
+            overridden_count=0,
+            human_override_count=0,
+            average_confidence=0.0,
+            average_latency_ms=0.0,
+            auto_verified_percentage=None,
+            flagged_percentage=None,
+            critical_rejection_percentage=None,
+            review_queue_percentage=None,
             category_distribution={},
             confidence_tier_distribution={},
             triage_distribution={},
-            average_confidence=0.0,
-            average_latency_ms=0.0,
+            triage_decision_distribution={},
             contradiction_counts={},
-            auto_verified_percentage=0.0,
-            review_queue_percentage=0.0,
-            human_override_count=0,
+            contradiction_breakdown={},
         )
 
     cat_counter = Counter()
@@ -65,21 +76,40 @@ def get_dataset_analytics(dataset_id: str):
         if item.get("override") is not None:
             override_count += 1
 
+    # Authoritative record counts per triage status (strictly mutually exclusive)
     auto_verified_count = triage_counter.get(TriageDecision.AUTO_VERIFIED.value, 0)
-    review_queue_count = triage_counter.get(TriageDecision.FLAGGED_FOR_REVIEW.value, 0) + triage_counter.get(TriageDecision.CRITICAL_REJECTION.value, 0)
+    flagged_for_review_count = triage_counter.get(TriageDecision.FLAGGED_FOR_REVIEW.value, 0)
+    critical_rejection_count = triage_counter.get(TriageDecision.CRITICAL_REJECTION.value, 0)
+
+    # Denominator calculation: count / total_transactions * 100
+    auto_verified_pct = round((auto_verified_count / total_txns) * 100.0, 1)
+    flagged_pct = round((flagged_for_review_count / total_txns) * 100.0, 1)
+    critical_rejection_pct = round((critical_rejection_count / total_txns) * 100.0, 1)
+
+    triage_dict = dict(triage_counter)
+    contradiction_dict = dict(contradiction_counter.most_common())
 
     return AnalyticsResponse(
         dataset_id=dataset_id,
         total_transactions=total_txns,
+        processed_transactions=processed_count,
+        auto_verified_count=auto_verified_count,
+        flagged_for_review_count=flagged_for_review_count,
+        critical_rejection_count=critical_rejection_count,
+        overridden_count=override_count,
+        human_override_count=override_count,
+        average_confidence=round(conf_sum / processed_count, 4) if processed_count > 0 else 0.0,
+        average_latency_ms=round(latency_sum / processed_count, 2) if processed_count > 0 else 0.0,
+        auto_verified_percentage=auto_verified_pct,
+        flagged_percentage=flagged_pct,
+        critical_rejection_percentage=critical_rejection_pct,
+        review_queue_percentage=flagged_pct,
         category_distribution=dict(cat_counter.most_common()),
         confidence_tier_distribution=dict(tier_counter),
-        triage_distribution=dict(triage_counter),
-        average_confidence=round(conf_sum / total_txns, 4),
-        average_latency_ms=round(latency_sum / total_txns, 2),
-        contradiction_counts=dict(contradiction_counter.most_common()),
-        auto_verified_percentage=round((auto_verified_count / total_txns) * 100.0, 1),
-        review_queue_percentage=round((review_queue_count / total_txns) * 100.0, 1),
-        human_override_count=override_count,
+        triage_distribution=triage_dict,
+        triage_decision_distribution=triage_dict,
+        contradiction_counts=contradiction_dict,
+        contradiction_breakdown=contradiction_dict,
     )
 
 

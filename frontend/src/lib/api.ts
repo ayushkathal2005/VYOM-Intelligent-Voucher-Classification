@@ -229,14 +229,19 @@ export interface DatasetAnalyticsResponse {
   flagged_for_review_count: number;
   critical_rejection_count: number;
   overridden_count: number;
+  human_override_count?: number;
   average_confidence: number;
-  auto_verified_percentage: number;
-  flagged_percentage: number;
-  critical_rejection_percentage: number;
+  average_latency_ms?: number;
+  auto_verified_percentage: number | null;
+  flagged_percentage: number | null;
+  critical_rejection_percentage: number | null;
+  review_queue_percentage?: number | null;
   category_distribution: Record<string, number>;
   confidence_tier_distribution: Record<string, number>;
-  triage_decision_distribution: Record<string, number>;
-  contradiction_breakdown: Record<string, number>;
+  triage_decision_distribution?: Record<string, number>;
+  triage_distribution?: Record<string, number>;
+  contradiction_breakdown?: Record<string, number>;
+  contradiction_counts?: Record<string, number>;
 }
 
 export interface TaxonomyCardResponse {

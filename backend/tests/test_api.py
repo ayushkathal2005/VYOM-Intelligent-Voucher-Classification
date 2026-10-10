@@ -7,6 +7,10 @@ from fastapi.testclient import TestClient
 import openpyxl
 
 from app.main import app
+from app.api.storage import dataset_storage
+from app.ingestion.schema import CanonicalTransaction
+from app.ml.guardrails.models import GuardrailEvaluation, TriageDecision, ConfidenceTier
+from app.ml.gemma.schemas import GemmaClassificationResult, GemmaVoucherPrediction
 
 client = TestClient(app)
 
@@ -238,6 +242,178 @@ def test_dataset_analytics_endpoint():
     assert "Purchase Order" in an["category_distribution"] or "Purchase" in an["category_distribution"]
     assert an["average_confidence"] > 0.0
     assert an["auto_verified_percentage"] >= 0.0
+
+
+def test_dataset_analytics_zero_records():
+    """Verify GET /api/v1/datasets/{id}/analytics handles 0-record datasets with null percentages (no div-by-zero)."""
+    dataset_id = "test-empty-dataset"
+    dataset_storage.save_dataset(
+        dataset_id=dataset_id,
+        filename="empty.csv",
+        transactions=[],
+        raw_rows=[],
+        columns_detected=["DocNo"],
+        canonical_fields_mapped={},
+        unmapped_columns=[],
+        warnings=[],
+    )
+
+    resp = client.get(f"/api/v1/datasets/{dataset_id}/analytics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_transactions"] == 0
+    assert data["processed_transactions"] == 0
+    assert data["auto_verified_count"] == 0
+    assert data["flagged_for_review_count"] == 0
+    assert data["critical_rejection_count"] == 0
+    # Percentages must be None / null when denominator is zero, never fabricated 0%
+    assert data["auto_verified_percentage"] is None
+    assert data["flagged_percentage"] is None
+    assert data["critical_rejection_percentage"] is None
+    assert data["review_queue_percentage"] is None
+
+
+def test_dataset_analytics_zero_review_and_rejection_cases():
+    """Verify genuinely zero review and rejection counts yield genuine 0.0% without error or omission."""
+    csv_content = (
+        "Document Number,Vendor Name,Base Amount,Tax Amount,PO Ref\n"
+        "PUR-101,Supplier A,5000.0,900.0,PO-1\n"
+        "PUR-102,Supplier B,6000.0,1080.0,PO-2\n"
+    ).encode("utf-8")
+
+    files = {"file": ("all_clean.csv", io.BytesIO(csv_content), "text/csv")}
+    dataset_id = client.post("/api/v1/datasets/upload", files=files).json()["dataset_id"]
+    client.post("/api/v1/classify/batch", json={"dataset_id": dataset_id, "use_mock": True})
+
+    resp = client.get(f"/api/v1/datasets/{dataset_id}/analytics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_transactions"] == 2
+    assert data["processed_transactions"] == 2
+    assert data["auto_verified_count"] == 2
+    assert data["auto_verified_percentage"] == 100.0
+    # Zero review cases should be genuinely 0.0
+    assert data["flagged_for_review_count"] == 0
+    assert data["flagged_percentage"] == 0.0
+    # Zero rejection cases should be genuinely 0.0
+    assert data["critical_rejection_count"] == 0
+    assert data["critical_rejection_percentage"] == 0.0
+    # Authoritative counts sum perfectly to total transactions (zero double counting)
+    assert (
+        data["auto_verified_count"] + data["flagged_for_review_count"] + data["critical_rejection_count"]
+        == data["total_transactions"]
+    )
+
+
+def test_dataset_analytics_nonzero_mixed_triage_authoritative_calculation():
+    """Verify mixed triage decisions calculate percentages accurately from count / total_transactions * 100."""
+    dataset_id = "test-mixed-triage-dataset"
+    txns = [
+        CanonicalTransaction(row_id=1, invoice_number="INV-1", taxable_value=100.0, total_amount=118.0),
+        CanonicalTransaction(row_id=2, invoice_number="INV-2", taxable_value=200.0, total_amount=236.0),
+        CanonicalTransaction(row_id=3, invoice_number="INV-3", taxable_value=300.0, total_amount=354.0),
+        CanonicalTransaction(row_id=4, invoice_number="INV-4", taxable_value=400.0, total_amount=472.0),
+    ]
+    dataset_storage.save_dataset(
+        dataset_id=dataset_id,
+        filename="mixed.csv",
+        transactions=txns,
+        raw_rows=[{} for _ in txns],
+        columns_detected=["DocNo"],
+        canonical_fields_mapped={},
+        unmapped_columns=[],
+        warnings=[],
+    )
+
+    # 2 AUTO_VERIFIED, 1 FLAGGED_FOR_REVIEW, 1 CRITICAL_REJECTION
+    statuses = [
+        TriageDecision.AUTO_VERIFIED,
+        TriageDecision.AUTO_VERIFIED,
+        TriageDecision.FLAGGED_FOR_REVIEW,
+        TriageDecision.CRITICAL_REJECTION,
+    ]
+    for row_id, triage in enumerate(statuses, start=1):
+        pred = GemmaVoucherPrediction(
+            category="Purchase",
+            confidence=0.9 if triage == TriageDecision.AUTO_VERIFIED else 0.5,
+            reasoning="Test prediction",
+        )
+        result = GemmaClassificationResult(
+            row_id=row_id,
+            prediction=pred,
+            model_name="mock-gemma-4-adapter",
+            latency_ms=10.0,
+            is_mock=True,
+        )
+        eval_res = GuardrailEvaluation(
+            row_id=row_id,
+            predicted_category="Purchase",
+            raw_model_confidence=pred.confidence,
+            calibrated_confidence=pred.confidence,
+            confidence_tier=ConfidenceTier.HIGH if triage == TriageDecision.AUTO_VERIFIED else ConfidenceTier.LOW,
+            contradictions=[],
+            triage_decision=triage,
+            retriever_affinity=0.9,
+            signal_compatibility=0.9,
+            audit_notes=[],
+        )
+        dataset_storage.save_prediction(dataset_id, row_id, result, eval_res)
+
+    resp = client.get(f"/api/v1/datasets/{dataset_id}/analytics")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["total_transactions"] == 4
+    assert data["processed_transactions"] == 4
+    assert data["auto_verified_count"] == 2
+    assert data["flagged_for_review_count"] == 1
+    assert data["critical_rejection_count"] == 1
+
+    # Check exact formula: count / total_transactions * 100
+    assert data["auto_verified_percentage"] == 50.0   # 2 / 4 * 100
+    assert data["flagged_percentage"] == 25.0         # 1 / 4 * 100
+    assert data["critical_rejection_percentage"] == 25.0 # 1 / 4 * 100
+    assert data["review_queue_percentage"] == 25.0
+
+    # Ensure no double counting
+    assert (
+        data["auto_verified_count"] + data["flagged_for_review_count"] + data["critical_rejection_count"]
+        == data["total_transactions"]
+    )
+    # Check that frontend-required schema fields are present
+    assert "triage_decision_distribution" in data
+    assert "contradiction_breakdown" in data
+    assert data["triage_decision_distribution"]["AUTO_VERIFIED"] == 2
+    assert data["triage_decision_distribution"]["FLAGGED_FOR_REVIEW"] == 1
+    assert data["triage_decision_distribution"]["CRITICAL_REJECTION"] == 1
+
+
+def test_dataset_analytics_unclassified_dataset_null_percentages():
+    """Verify uploaded but unclassified dataset returns None percentages rather than false zeros."""
+    dataset_id = "test-unclassified-dataset"
+    txns = [
+        CanonicalTransaction(row_id=1, invoice_number="DOC-1", total_amount=100.0),
+        CanonicalTransaction(row_id=2, invoice_number="DOC-2", total_amount=200.0),
+    ]
+    dataset_storage.save_dataset(
+        dataset_id=dataset_id,
+        filename="unclassified.csv",
+        transactions=txns,
+        raw_rows=[{}, {}],
+        columns_detected=["DocNo"],
+        canonical_fields_mapped={},
+        unmapped_columns=[],
+        warnings=[],
+    )
+
+    resp = client.get(f"/api/v1/datasets/{dataset_id}/analytics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_transactions"] == 2
+    assert data["processed_transactions"] == 0
+    assert data["auto_verified_percentage"] is None
+    assert data["flagged_percentage"] is None
+    assert data["critical_rejection_percentage"] is None
 
 
 # -----------------------------------------------------------------------------

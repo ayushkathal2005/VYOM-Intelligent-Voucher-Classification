@@ -484,6 +484,46 @@ We conducted a controlled empirical experiment comparing:
   - `backend/tests/test_guardrails.py`: Enforced explicit mock adapter in unit tests to protect API quotas.
   - `PROJECT_STATE.md`: Recorded performance benchmark metrics and architectural findings.
 
+---
+
+## 18. Dashboard KPI Resolution: Review Queue & Critical Rejection
+
+### 18.1 Issue Description & Root Cause
+- **Symptom**: The Review Queue and Critical Rejection KPI cards on the dashboard displayed blank percentages (`% (rows)`), while Total Transactions and Auto-Verified Rate displayed numbers.
+- **Root Cause Analysis**:
+  1. **Backend Serialization Omission**: `backend/app/api/routes/analytics.py` previously grouped flagged and rejected transactions together into `review_queue_percentage`, while omitting `flagged_percentage`, `critical_rejection_percentage`, `flagged_for_review_count`, `critical_rejection_count`, and `auto_verified_count`.
+  2. **Frontend Undefined Values**: `frontend/src/components/dashboard/AnalyticsOverview.tsx` referenced `analytics.flagged_percentage` and `analytics.critical_rejection_percentage`, which evaluated to `undefined`, causing React template literals to render as empty `%` and `( rows)`.
+  3. **Double Counting Hazard**: The legacy calculation lumped `CRITICAL_REJECTION` into `review_queue_count`, creating duplicate counting across human review and hard rejection buckets.
+
+### 18.2 Implemented Resolution
+1. **Authoritative Backend Calculation & Mutually Exclusive Triage**:
+   - `backend/app/api/routes/analytics.py` now partitions dataset predictions into strictly mutually exclusive sets:
+     - `auto_verified_count` (`TriageDecision.AUTO_VERIFIED`)
+     - `flagged_for_review_count` (`TriageDecision.FLAGGED_FOR_REVIEW`)
+     - `critical_rejection_count` (`TriageDecision.CRITICAL_REJECTION`)
+   - Percentages are computed from authoritative record counts using denominator: `count / total_transactions * 100`.
+   - Guaranteed: `auto_verified_count + flagged_for_review_count + critical_rejection_count == processed_transactions` (zero double-counting).
+2. **Strict Null & Zero Handling**:
+   - When denominator is zero (empty or unclassified dataset), percentages return `None` (`null` in JSON).
+   - When count is genuinely zero in a processed dataset, percentages return `0.0`.
+3. **Resilient Frontend Formatting**:
+   - `frontend/src/components/dashboard/AnalyticsOverview.tsx` uses `formatKpiPercentage` and `formatKpiRowCount` helpers:
+     - Displays `0%` and `(0 rows)` when metric is genuinely zero.
+     - Displays `N/A` when denominator or values are missing, invalid, or uncalculated.
+     - Never silently converts API errors or missing data into zero.
+4. **Backward-Compatible Schema Alignment**:
+   - `backend/app/api/schemas.py` and `frontend/src/lib/api.ts` provide unified schemas with aliases (`human_override_count` / `overridden_count`, `review_queue_percentage` / `flagged_percentage`, `contradiction_counts` / `contradiction_breakdown`).
+
+### 18.3 Verification & Quality Gate
+- **Backend Test Suite**: All **88 tests passing** (`pytest backend/tests -v`, 100% green in 8.02s).
+- **Regression Tests Added**:
+  - `test_dataset_analytics_zero_records`: Verifies null percentages and zero counts without division by zero.
+  - `test_dataset_analytics_zero_review_and_rejection_cases`: Verifies genuine `0.0%` reporting for 0 review/rejection cases with count summation check.
+  - `test_dataset_analytics_nonzero_mixed_triage_authoritative_calculation`: Verifies exact multi-status triage percentages and mutual exclusivity.
+  - `test_dataset_analytics_unclassified_dataset_null_percentages`: Verifies unclassified datasets yield null percentages rather than false zeros.
+- **Frontend Production Build**: `npm run build` compiled successfully with Next.js 16.4.0 (Turbopack) in 1.74s, with TypeScript validation passed.
+
+
 
 
 

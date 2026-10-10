@@ -184,15 +184,24 @@ class AnalyticsResponse(BaseModel):
 
     dataset_id: str
     total_transactions: int
-    category_distribution: Dict[str, int]
-    confidence_tier_distribution: Dict[str, int]
-    triage_distribution: Dict[str, int]
-    average_confidence: float
-    average_latency_ms: float
-    contradiction_counts: Dict[str, int]
-    auto_verified_percentage: float
-    review_queue_percentage: float
-    human_override_count: int
+    processed_transactions: int = 0
+    auto_verified_count: int = 0
+    flagged_for_review_count: int = 0
+    critical_rejection_count: int = 0
+    overridden_count: int = 0
+    human_override_count: int = 0
+    average_confidence: float = 0.0
+    average_latency_ms: float = 0.0
+    auto_verified_percentage: Optional[float] = None
+    flagged_percentage: Optional[float] = None
+    critical_rejection_percentage: Optional[float] = None
+    review_queue_percentage: Optional[float] = None
+    category_distribution: Dict[str, int] = Field(default_factory=dict)
+    confidence_tier_distribution: Dict[str, int] = Field(default_factory=dict)
+    triage_distribution: Dict[str, int] = Field(default_factory=dict)
+    triage_decision_distribution: Dict[str, int] = Field(default_factory=dict)
+    contradiction_counts: Dict[str, int] = Field(default_factory=dict)
+    contradiction_breakdown: Dict[str, int] = Field(default_factory=dict)
 
 
 # -----------------------------------------------------------------------------
