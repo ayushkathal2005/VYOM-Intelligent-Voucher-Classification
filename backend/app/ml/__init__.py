@@ -32,6 +32,17 @@ from app.ml.gemma import (
     GemmaConfigurationError,
 )
 
+from app.ml.signals import (
+    MoneyFlowDirection,
+    EntityRole,
+    AccountingSignalProfile,
+    VoucherKnowledgeCard,
+    VOUCHER_CARDS,
+    AccountingSignalsEngine,
+    SemanticCandidateRetriever,
+    candidate_retriever,
+)
+
 __all__ = [
     "AUTHORITATIVE_VOUCHER_LABELS",
     "LABEL_TO_ID",
@@ -55,6 +66,15 @@ __all__ = [
     "MockGemmaAdapter",
     "GemmaClassifier",
     "GemmaConfigurationError",
+    "MoneyFlowDirection",
+    "EntityRole",
+    "AccountingSignalProfile",
+    "VoucherKnowledgeCard",
+    "VOUCHER_CARDS",
+    "AccountingSignalsEngine",
+    "SemanticCandidateRetriever",
+    "candidate_retriever",
 ]
+
 
 

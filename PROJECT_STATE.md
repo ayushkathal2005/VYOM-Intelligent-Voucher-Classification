@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 5 — Gemma 4 Integration**
-> Status: **COMPLETE** (Awaiting user review at Phase 5 Gate)
+> Current Authorized Phase: **Phase 6 — Accounting Signals & Semantic Retrieval**
+> Status: **COMPLETE** (Awaiting user review at Phase 6 Gate)
 
 ---
 
@@ -16,10 +16,8 @@
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
 | 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
 | 4 | Baseline Classifier | COMPLETE | `89e42c6` | Verified (`origin/main`) | Approved |
-| **5** | **Gemma 4 Integration** | **COMPLETE** | `cb1303c` | Verified (`origin/main`) | **Current Phase Gate** |
-| 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
-
-
+| 5 | Gemma 4 Integration | COMPLETE | `cb1303c` | Verified (`origin/main`) | Approved |
+| **6** | **Accounting Signals & Semantic Retrieval** | **COMPLETE** | `6894091` | Verified (`origin/main`) | **Current Phase Gate** |
 | 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
 | 8 | Backend API | PENDING | — | — | Not Authorized |
 | 9 | Connected Dashboard | PENDING | — | — | Not Authorized |
@@ -194,9 +192,31 @@
 
 ---
 
-## 10. Next Permitted Action
+## 10. Phase 6 — Accounting Signals & Semantic Retrieval Summary
 
-Upon user authorization of the Phase 5 report:
-Proceed to **Phase 6 — Accounting Signals & Semantic Retrieval**.
+- **Objective**: Implement financial domain intelligence to derive money-flow direction, entity roles, statutory indicators, and candidate retrieval from 27 authoritative voucher knowledge cards with zero target-label leakage.
+- **Accounting Signals Engine (`backend/app/ml/signals/engine.py`)**:
+  - `MoneyFlowDirection`: Categorizes transactions into `INFLOW`, `OUTFLOW`, `INTERNAL`, `ADJUSTMENT`, `NON_FINANCIAL_MOVEMENT`, `ORDER_COMMITMENT`, `ATTENDANCE_LOG`, or `UNKNOWN`.
+  - Hierarchical signal detection resolves logistical movement (Delivery Notes, GRN, Rejection Notes, Stock Recounts/Adjustments) before monetary fallbacks.
+  - Entity role classification detects `VENDOR_SUPPLIER`, `CUSTOMER_BUYER`, `EMPLOYEE`, `INTERNAL_ACCOUNT`, `CONTRACTOR_JOBWORKER`, `OVERSEAS_COUNTERPARTY`, `TAX_AUTHORITY`.
+  - Tax applicability and return indicator detection (negative quantities, units returned, debit/credit notes).
+- **27 Voucher Knowledge Cards (`backend/app/ml/signals/voucher_cards.py`)**:
+  - Full accounting profiles across all 27 categories detailing expected flow, typical debit/credit ledgers, primary identifiers/prefixes, key signals, negative signals, confusion pairs, and disambiguation rules.
+- **Semantic Candidate Retriever (`backend/app/ml/signals/retriever.py`)**:
+  - Multi-signal ranking algorithm combining TF-IDF similarity across card knowledge, ERP document prefix resolution (`ERP_PREFIX_MAP`), money flow compatibility, return/trade disambiguation, and negative signal penalties.
+  - Generates zero-leakage prompt context injection (`get_candidate_context`) for the Gemma classifier.
+  - **Empirical Validation**: **100% Top-5 candidate recall (0 misses out of 120)** across all reference workbook transactions.
+- **Test Suite Expansion (`backend/tests/test_signals.py`)**:
+  - 12 new unit and integration tests covering signal extraction, money-flow derivation, card integrity, disambiguation rules, prompt context formatting, and reference workbook cases.
+  - Full repository test suite: **53 passed, 0 failed** (100% green).
+  - Frontend production build (`npm run build`): Clean compilation in Next.js 16.4.0.
+
+---
+
+## 11. Next Permitted Action
+
+Upon user authorization of the Phase 6 report:
+Proceed to **Phase 7 — Confidence Scoring & Guardrails Pipeline**.
+
 
 

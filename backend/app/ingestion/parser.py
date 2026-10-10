@@ -243,10 +243,19 @@ def parse_transaction_file(
             if raw_val is None:
                 continue
 
+            # If this canonical attribute was already populated by an earlier column in this row,
+            # preserve this column in custom_populated_fields so its critical data is NOT lost or overwritten
+            if canon_field in txn_data and txn_data[canon_field] is not None:
+                sanitized_dup = sanitize_cell_value(raw_val)
+                if sanitized_dup is not None:
+                    txn_data["custom_populated_fields"][raw_col] = sanitized_dup
+                continue
+
             if canon_field in ("taxable_value", "gst", "discount", "freight", "total_amount", "quantity"):
                 parsed_num = parse_numeric(raw_val)
                 if parsed_num is not None:
                     txn_data[canon_field] = parsed_num
+
             elif canon_field == "invoice_date":
                 parsed_dt = parse_date_string(raw_val)
                 if parsed_dt is not None:
