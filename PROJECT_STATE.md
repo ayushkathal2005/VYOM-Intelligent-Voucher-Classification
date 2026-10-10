@@ -16,8 +16,9 @@
 | 2 | Visual Foundation | COMPLETE | `f7e8692` | Verified (`origin/main`) | Approved |
 | 3 | Data Ingestion | COMPLETE | `787a7f7` | Verified (`origin/main`) | Approved |
 | 4 | Baseline Classifier | COMPLETE | `89e42c6` | Verified (`origin/main`) | Approved |
-| **5** | **Gemma 4 Integration** | **COMPLETE** | `fdafebf` | Verified (`origin/main`) | **Current Phase Gate** |
+| **5** | **Gemma 4 Integration** | **COMPLETE** | `cb1303c` | Verified (`origin/main`) | **Current Phase Gate** |
 | 6 | Accounting Signals & Semantic Retrieval | PENDING | — | — | Not Authorized |
+
 
 | 7 | Confidence & Guardrails | PENDING | — | — | Not Authorized |
 | 8 | Backend API | PENDING | — | — | Not Authorized |
