@@ -30,7 +30,15 @@ export function Header() {
         </div>
 
         {/* Center navigation */}
-        <nav className="hidden md:flex items-center gap-8 text-xs uppercase tracking-widest text-[#A69A87] font-medium">
+        <nav className="hidden md:flex items-center gap-7 text-xs uppercase tracking-widest text-[#A69A87] font-medium">
+          <a
+            href="#workspace"
+            className="text-[#F0AE2C] hover:text-white transition-colors focus-visible:outline-none flex items-center gap-1.5"
+            id="nav-workspace-link"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F0AE2C] animate-pulse" />
+            Workspace
+          </a>
           <a
             href="#overview"
             className="hover:text-[#F0AE2C] transition-colors focus-visible:outline-none"

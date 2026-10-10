@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 8 — Backend REST API**
-> Status: **COMPLETE** (Awaiting user review at Phase 8 Gate)
+> Current Authorized Phase: **Phase 9 — Connected Dashboard & Interactive Review Interface**
+> Status: **COMPLETE** (Awaiting user review at Phase 9 Gate)
 
 ---
 
@@ -19,8 +19,8 @@
 | 5 | Gemma 4 Integration | COMPLETE | `cb1303c` | Verified (`origin/main`) | Approved |
 | 6 | Accounting Signals & Semantic Retrieval | COMPLETE | `4935175` | Verified (`origin/main`) | Approved |
 | 7 | Confidence & Guardrails | COMPLETE | `bef4e46` | Verified (`origin/main`) | Approved |
-| **8** | **Backend REST API** | **COMPLETE** | `369f67f` | Verified (`origin/main`) | **Current Phase Gate** |
-| 9 | Connected Dashboard | PENDING | — | — | Not Authorized |
+| 8 | Backend REST API | COMPLETE | `369f67f` | Verified (`origin/main`) | Approved |
+| **9** | **Connected Dashboard** | **COMPLETE** | Pending | Pending (`origin/main`) | **Current Phase Gate** |
 | 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
 
@@ -277,10 +277,62 @@
 
 ---
 
-## 13. Next Permitted Action
+## 13. Phase 9 — Connected Dashboard & Interactive Review Interface Summary
 
-Upon user authorization of the Phase 8 report:
-Proceed to **Phase 9 — Connected Dashboard & Interactive Review Interface** (Next.js 16 dark crystal frontend connected to live `/api/v1` backend endpoints).
+- **Objective**: Connect the Next.js 16 dark crystal frontend to live `/api/v1` backend endpoints, delivering an end-to-end audit workspace covering dataset ingestion, real-time & batch inference, analytics distributions, triage queues, deep voucher inspection, and authoritative human overrides.
+- **Frontend Architecture & Components Implemented (`frontend/src/`)**:
+  - `Typed API Client Layer (`frontend/src/lib/api.ts`)`:
+    - Full TypeScript interface definitions matching backend Pydantic models.
+    - Robust API callers for dataset uploads, previews, single and batch classification, status polling, predictions queries, human overrides, analytics, export downloads, and taxonomy cards.
+  - `Ingestion & Schema Discovery Studio (`frontend/src/components/dashboard/UploadStudio.tsx`)`:
+    - Drag-and-drop & file picker supporting `.xlsx` and `.csv` workbooks.
+    - Schema mapping intelligence displaying detected columns, mapped canonical fields, unmapped columns, and zero-leakage schema warnings.
+    - Paginated raw tabular inspection modal for verifying raw rows prior to classification.
+  - `Dual-Engine Classification Controls (`frontend/src/components/dashboard/ClassificationControls.tsx`)`:
+    - One-click batch classification trigger.
+    - Toggle between deterministic offline Mock Adapter (`is_mock=True` zero-leakage verified) and live Gemma 4 inference.
+    - Animated progress bar with live polling (800ms) of job status (`PROCESSING`, `COMPLETED`, `FAILED`).
+  - `Analytics & Distribution Dashboard (`frontend/src/components/dashboard/AnalyticsOverview.tsx`)`:
+    - 5 executive KPI cards: Total Transactions, Auto-Verified Rate % (emerald glow), Review Queue % (amber indicator), Critical Rejection % (crimson indicator), Mean Calibrated Confidence.
+    - Dynamic horizontal frequency distribution bars across active classes from the 27-voucher taxonomy.
+    - Confidence tier breakdown (`HIGH` >= 85%, `MEDIUM` 65-84%, `LOW` < 65%).
+    - Accounting contradiction violation breakdown by rule name and severity.
+  - `Multi-Dimensional Review Queue Table (`frontend/src/components/dashboard/ReviewQueueTable.tsx`)`:
+    - Triage tabs: `ALL`, `AUTO_VERIFIED`, `FLAGGED_FOR_REVIEW`, `CRITICAL_REJECTION`.
+    - Real-time multi-dimensional filters: Confidence tier, 27-voucher category dropdown, and free-text search (document #, counterparties, narration).
+    - Table columns: Row #, Document # & date, Counterparty, Total Amount, Predicted Category (with `OVERRIDDEN` pill if modified), Calibrated Confidence with tier meter, Triage badge, Contradictions violation pill, Actions (`Inspect` & `Override`).
+    - Pagination controls with page size selector (10, 15, 25, 50).
+  - `Deep Voucher Inspection Drawer (`frontend/src/components/dashboard/VoucherDetailModal.tsx`)`:
+    - 4-quadrant accounting signals panel (Money Flow direction & type, Entity Roles, Tax & Returns, Cross-border trade indicators).
+    - Semantic candidate retriever top-5 breakdown with affinity scores.
+    - Gemma 4 deep reasoning chain-of-thought text.
+    - Detected contradiction alerts with rule name, severity, description, and suggested action.
+    - Auditor override audit history.
+  - `Authoritative Human Auditor Override Modal (`frontend/src/components/dashboard/HumanOverrideModal.tsx`)`:
+    - Category reclassification selector across all 27 authoritative labels.
+    - Mandatory audit justification reasoning and Reviewer ID input.
+    - Submits to `POST /api/v1/datasets/{id}/predictions/{row_id}/override`.
+    - Promotes triage decision to `AUTO_VERIFIED`, marks high confidence, records audit notes, and updates local state & analytics in real time.
+  - `Real-Time AI Sandbox (`frontend/src/components/dashboard/SingleTestSandbox.tsx`)`:
+    - On-demand single transaction classifier with 5 preset templates (Purchase Invoice, Bank Contra Transfer, Sales Return Credit Note, Procurement Purchase Order, Contradiction Test).
+    - Real-time classification execution displaying latency, predicted category, confidence, triage, signals, and reasoning.
+  - `Streaming Audited Export (`frontend/src/components/dashboard/ExportToolbar.tsx`)`:
+    - Direct browser download for `.xlsx` and `.csv` formats appending 8 `VYOM_*` audit trail headers.
+  - `Taxonomy & Knowledge Card Explorer (`frontend/src/components/dashboard/TaxonomyModal.tsx`)`:
+    - Searchable directory of the 27 authoritative voucher profiles with typical debit/credit ledgers and disambiguation rules.
+  - `Master Workspace Container (`frontend/src/components/dashboard/WorkspaceView.tsx`)`:
+    - Seamlessly mounted into `frontend/src/app/page.tsx` with smooth navigation from the fixed luxury header and hero section.
+- **Verification & Builds**:
+  - Frontend production build (`npm run build`): Next.js 16.4.0 (Turbopack) compiled cleanly in 2.2s with zero TypeScript / React errors.
+  - Full backend test suite (`pytest -v`): **75 passed, 0 failed (100% green)**.
+
+---
+
+## 14. Next Permitted Action
+
+Upon user authorization of the Phase 9 report:
+Proceed to **Phase 10 — Robustness, Edge Cases, Stress Testing & Model Evaluation**.
+
 
 
 
