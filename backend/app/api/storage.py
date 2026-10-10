@@ -235,6 +235,7 @@ class DatasetStorage:
             entry["evaluation"].predicted_category = new_category
             entry["evaluation"].triage_decision = TriageDecision.AUTO_VERIFIED
             entry["evaluation"].confidence_tier = ConfidenceTier.HIGH
+            entry["evaluation"].contradictions = []
             entry["evaluation"].audit_notes.append(
                 f"Human override applied by '{reviewer_id}': '{prev_cat}' -> '{new_category}'. Reason: {override_reason}"
             )

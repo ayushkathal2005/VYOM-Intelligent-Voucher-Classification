@@ -205,6 +205,13 @@ class AnalyticsResponse(BaseModel):
     triage_decision_distribution: Dict[str, int] = Field(default_factory=dict)
     contradiction_counts: Dict[str, int] = Field(default_factory=dict)
     contradiction_breakdown: Dict[str, int] = Field(default_factory=dict)
+    total_contradiction_events: int = 0
+    transactions_with_contradictions: int = 0
+    critical_contradiction_events: int = 0
+    warning_contradiction_events: int = 0
+    critical_transactions_count: int = 0
+    warning_transactions_count: int = 0
+    inconsistent_auto_verified_count: int = 0
     has_ground_truth: bool = False
     evaluation_accuracy: Optional[float] = None
     evaluation_macro_f1: Optional[float] = None

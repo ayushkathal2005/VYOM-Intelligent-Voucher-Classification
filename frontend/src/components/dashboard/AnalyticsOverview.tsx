@@ -221,7 +221,11 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </div>
           <div className="mt-3 text-[11px] text-emerald-400/90 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>High Confidence &bull; No Contradictions</span>
+            <span>
+              {analytics.inconsistent_auto_verified_count !== undefined && analytics.inconsistent_auto_verified_count > 0
+                ? `${analytics.inconsistent_auto_verified_count} Audits Pending`
+                : "High Confidence • Clean Validation"}
+            </span>
           </div>
         </div>
 
@@ -267,7 +271,13 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           </div>
           <div className="mt-3 text-[11px] text-red-400/90 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-            <span>Contradiction Violations</span>
+            <span>
+              {analytics.critical_rejection_count > 0
+                ? "Severe Accounting Violations"
+                : (analytics.total_contradiction_events ?? 0) > 0
+                ? "0 Critical • Warnings Routed to Review"
+                : "Zero Structural Rejections"}
+            </span>
           </div>
         </div>
 
@@ -382,12 +392,32 @@ export function AnalyticsOverview({ analytics, isLoading }: AnalyticsOverviewPro
           {/* Contradiction Breakdown */}
           <div className="bg-[#0B0805] border border-[rgba(191,145,51,0.2)] rounded-lg p-6">
             <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <h3 className="font-serif text-base font-semibold text-[#F4EBDD]">
-                Contradictions Detected
-              </h3>
-              <span className="text-xs font-mono text-[#F0AE2C]">
-                {Object.values(contradictionRecords).reduce((a, b) => a + b, 0)} Total
-              </span>
+              <div>
+                <h3 className="font-serif text-base font-semibold text-[#F4EBDD]">
+                  Contradictions Detected
+                </h3>
+                {((analytics.critical_contradiction_events ?? 0) > 0 || (analytics.warning_contradiction_events ?? 0) > 0) && (
+                  <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+                    <span className="text-red-400 font-mono">
+                      {analytics.critical_contradiction_events ?? 0} Critical
+                    </span>
+                    <span className="text-white/20">&bull;</span>
+                    <span className="text-amber-400 font-mono">
+                      {analytics.warning_contradiction_events ?? 0} Warnings
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-mono text-[#F0AE2C] block">
+                  {analytics.total_contradiction_events ?? Object.values(contradictionRecords).reduce((a, b) => a + b, 0)} Total Events
+                </span>
+                {analytics.transactions_with_contradictions !== undefined && analytics.transactions_with_contradictions > 0 && (
+                  <span className="text-[10px] font-mono text-[#A69A87] block">
+                    across {analytics.transactions_with_contradictions} affected records
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-3 space-y-2 max-h-36 overflow-y-auto pr-1">

@@ -17,6 +17,8 @@ export function UploadStudio({ onDatasetLoaded, activeDataset }: UploadStudioPro
   const [previewData, setPreviewData] = useState<PaginatedPreviewResponse | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isDetectedColsExpanded, setIsDetectedColsExpanded] = useState(false);
+  const [isCanonicalMappedExpanded, setIsCanonicalMappedExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -32,6 +34,8 @@ export function UploadStudio({ onDatasetLoaded, activeDataset }: UploadStudioPro
 
     try {
       const result = await api.uploadDataset(file);
+      setIsDetectedColsExpanded(false);
+      setIsCanonicalMappedExpanded(false);
       onDatasetLoaded(result);
     } catch (err: any) {
       setUploadError(err.message || "Failed to parse and upload transaction dataset.");
@@ -254,47 +258,193 @@ export function UploadStudio({ onDatasetLoaded, activeDataset }: UploadStudioPro
             </div>
 
             {/* Schema Mapping Intelligence */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-2">
-              <div className="p-3 bg-[#11100E] rounded border border-white/5">
-                <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
-                  Detected Columns ({activeDataset.columns_detected.length})
-                </span>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {activeDataset.columns_detected.map((col) => (
-                    <span
-                      key={col}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/60 border border-[rgba(191,145,51,0.2)] text-[#F4EBDD]"
-                    >
-                      {col}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-2 items-start">
+              {/* 1. Detected Columns */}
+              <div className="p-3 bg-[#11100E] rounded border border-white/5 flex flex-col justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsDetectedColsExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-left group cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-[#F0AE2C]/50 rounded py-0.5"
+                  aria-expanded={isDetectedColsExpanded}
+                  aria-controls="detected-columns-content"
+                  id="btn-toggle-detected-columns"
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold group-hover:text-[#F0AE2C] transition-colors">
+                      Detected Columns
                     </span>
-                  ))}
-                </div>
+                    <span className="text-[10px] font-mono text-[#F0AE2C]/90 bg-[#F0AE2C]/10 px-1.5 py-0.5 rounded border border-[#F0AE2C]/20">
+                      {activeDataset.columns_detected.length} columns detected
+                    </span>
+                  </div>
+                  <span className="text-[#A69A87] group-hover:text-[#F0AE2C] transition-colors p-0.5 shrink-0 ml-1">
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        isDetectedColsExpanded ? "rotate-180 text-[#F0AE2C]" : "rotate-0"
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {!isDetectedColsExpanded ? (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {activeDataset.columns_detected.slice(0, 4).map((col) => (
+                        <span
+                          key={col}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/60 border border-[rgba(191,145,51,0.2)] text-[#F4EBDD] max-w-[130px] truncate"
+                          title={col}
+                        >
+                          {col}
+                        </span>
+                      ))}
+                      {activeDataset.columns_detected.length > 4 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsDetectedColsExpanded(true)}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#161410] border border-[rgba(191,145,51,0.3)] text-[#F0AE2C] hover:border-[#F0AE2C] hover:bg-[#1f1b14] transition-colors cursor-pointer"
+                          title="Click to expand all columns"
+                        >
+                          +{activeDataset.columns_detected.length - 4} more ▼
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[#A69A87]/80 font-mono">
+                      {activeDataset.columns_detected.length} columns detected &bull; Click header to inspect
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    id="detected-columns-content"
+                    className="mt-2.5 max-h-56 overflow-y-auto pr-1 space-y-2 border-t border-white/5 pt-2"
+                  >
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeDataset.columns_detected.map((col) => (
+                        <span
+                          key={col}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/60 border border-[rgba(191,145,51,0.2)] text-[#F4EBDD] break-all"
+                          title={col}
+                        >
+                          {col}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="sticky bottom-0 pt-1 flex justify-end bg-gradient-to-t from-[#11100E] via-[#11100E]/90 to-transparent">
+                      <button
+                        type="button"
+                        onClick={() => setIsDetectedColsExpanded(false)}
+                        className="text-[10px] font-mono text-[#A69A87] hover:text-[#F0AE2C] transition-colors py-0.5"
+                      >
+                        ▲ Collapse list
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-3 bg-[#11100E] rounded border border-white/5">
-                <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
-                  Canonical Fields Mapped ({Object.keys(activeDataset.canonical_fields_mapped).length})
-                </span>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {Object.entries(activeDataset.canonical_fields_mapped).map(([canonical, original]) => (
-                    <span
-                      key={canonical}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F0AE2C]/10 border border-[#F0AE2C]/30 text-[#F0AE2C]"
-                      title={`Mapped from: ${original}`}
-                    >
-                      {canonical} &larr; {original}
+              {/* 2. Canonical Fields Mapped */}
+              <div className="p-3 bg-[#11100E] rounded border border-white/5 flex flex-col justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsCanonicalMappedExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-left group cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-[#F0AE2C]/50 rounded py-0.5"
+                  aria-expanded={isCanonicalMappedExpanded}
+                  aria-controls="canonical-mappings-content"
+                  id="btn-toggle-canonical-mappings"
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold group-hover:text-[#F0AE2C] transition-colors">
+                      Canonical Fields Mapped
                     </span>
-                  ))}
-                </div>
+                    <span className="text-[10px] font-mono text-emerald-400/90 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      {Object.keys(activeDataset.canonical_fields_mapped).length} canonical mappings
+                    </span>
+                  </div>
+                  <span className="text-[#A69A87] group-hover:text-[#F0AE2C] transition-colors p-0.5 shrink-0 ml-1">
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        isCanonicalMappedExpanded ? "rotate-180 text-[#F0AE2C]" : "rotate-0"
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
+                </button>
+
+                {!isCanonicalMappedExpanded ? (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {Object.entries(activeDataset.canonical_fields_mapped)
+                        .slice(0, 3)
+                        .map(([canonical, original]) => (
+                          <span
+                            key={canonical}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F0AE2C]/10 border border-[#F0AE2C]/30 text-[#F0AE2C] max-w-[170px] truncate"
+                            title={`Mapped from: ${original}`}
+                          >
+                            {canonical} &larr; {original}
+                          </span>
+                        ))}
+                      {Object.keys(activeDataset.canonical_fields_mapped).length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCanonicalMappedExpanded(true)}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#161410] border border-[rgba(191,145,51,0.3)] text-[#F0AE2C] hover:border-[#F0AE2C] hover:bg-[#1f1b14] transition-colors cursor-pointer"
+                          title="Click to expand all mappings"
+                        >
+                          +{Object.keys(activeDataset.canonical_fields_mapped).length - 3} more ▼
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[#A69A87]/80 font-mono">
+                      {Object.keys(activeDataset.canonical_fields_mapped).length} canonical mappings &bull; Click header to inspect
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    id="canonical-mappings-content"
+                    className="mt-2.5 max-h-56 overflow-y-auto pr-1 space-y-2 border-t border-white/5 pt-2"
+                  >
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(activeDataset.canonical_fields_mapped).map(([canonical, original]) => (
+                        <span
+                          key={canonical}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F0AE2C]/10 border border-[#F0AE2C]/30 text-[#F0AE2C] break-all"
+                          title={`Mapped from: ${original}`}
+                        >
+                          {canonical} &larr; {original}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="sticky bottom-0 pt-1 flex justify-end bg-gradient-to-t from-[#11100E] via-[#11100E]/90 to-transparent">
+                      <button
+                        type="button"
+                        onClick={() => setIsCanonicalMappedExpanded(false)}
+                        className="text-[10px] font-mono text-[#A69A87] hover:text-[#F0AE2C] transition-colors py-0.5"
+                      >
+                        ▲ Collapse list
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-3 bg-[#11100E] rounded border border-white/5">
-                <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block">
+              {/* 3. Schema Integrity & Warnings */}
+              <div className="p-3 bg-[#11100E] rounded border border-white/5 flex flex-col justify-start">
+                <span className="text-[10px] uppercase tracking-wider text-[#A69A87] font-semibold block py-0.5">
                   Schema Integrity & Warnings
                 </span>
                 {activeDataset.warnings.length === 0 ? (
                   <div className="flex items-center gap-1.5 mt-2 text-emerald-400 text-xs">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                     <span>Clean schema. Zero target leakage.</span>

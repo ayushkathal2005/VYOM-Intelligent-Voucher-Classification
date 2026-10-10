@@ -72,6 +72,11 @@ Desktop.ini
 # Build artifacts
 *.tar.gz
 *.zip
+*.rar
+*.fbx
+*.mtl
+мОНЕТА_*.png
+*DefaultMaterial*.png
 
 # Reference and judging datasets (development fixtures)
 *.xlsx

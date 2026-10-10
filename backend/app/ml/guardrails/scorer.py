@@ -120,17 +120,26 @@ class ConfidenceScorer:
         ]
 
         for c in contradictions:
-            if c.severity == ContradictionSeverity.CRITICAL:
+            # Safely extract severity and code across enum, string, or dict
+            c_sev = getattr(c, "severity", None)
+            if c_sev is None and isinstance(c, dict):
+                c_sev = c.get("severity")
+            if hasattr(c_sev, "value"):
+                c_sev = c_sev.value
+            c_sev_str = str(c_sev).upper() if c_sev else "WARNING"
+            c_code = getattr(c, "code", None) or (c.get("code") if isinstance(c, dict) else "UNKNOWN")
+
+            if c_sev_str == "CRITICAL" or c_sev == ContradictionSeverity.CRITICAL:
                 penalties += 0.35
                 critical_count += 1
-                audit_notes.append(f"CRITICAL penalty (-0.35): {c.code}")
-            elif c.severity == ContradictionSeverity.WARNING:
+                audit_notes.append(f"CRITICAL penalty (-0.35): {c_code}")
+            elif c_sev_str == "WARNING" or c_sev == ContradictionSeverity.WARNING:
                 penalties += 0.12
                 warning_count += 1
-                audit_notes.append(f"WARNING penalty (-0.12): {c.code}")
-            elif c.severity == ContradictionSeverity.INFO:
+                audit_notes.append(f"WARNING penalty (-0.12): {c_code}")
+            elif c_sev_str == "INFO" or c_sev == ContradictionSeverity.INFO:
                 penalties += 0.04
-                audit_notes.append(f"INFO penalty (-0.04): {c.code}")
+                audit_notes.append(f"INFO penalty (-0.04): {c_code}")
 
         calibrated = max(0.05, min(0.99, base_score - penalties))
         calibrated = round(calibrated, 4)
@@ -140,7 +149,12 @@ class ConfidenceScorer:
         if critical_count > 0:
             tier = ConfidenceTier.LOW
             triage = TriageDecision.CRITICAL_REJECTION
-            audit_notes.append("Routed to CRITICAL_REJECTION due to severe structural contradiction.")
+            audit_notes.append(f"Routed to CRITICAL_REJECTION due to {critical_count} severe structural contradiction(s).")
+        elif warning_count > 0:
+            # Active contradiction warnings strictly prevent straight-through AUTO_VERIFIED posting
+            tier = ConfidenceTier.MEDIUM if calibrated >= 0.65 else ConfidenceTier.LOW
+            triage = TriageDecision.FLAGGED_FOR_REVIEW
+            audit_notes.append(f"Routed to FLAGGED_FOR_REVIEW due to {warning_count} contradiction warning(s); automated posting held.")
         elif calibrated >= 0.85:
             tier = ConfidenceTier.HIGH
             triage = TriageDecision.AUTO_VERIFIED

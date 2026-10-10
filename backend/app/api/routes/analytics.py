@@ -54,9 +54,18 @@ def get_dataset_analytics(dataset_id: str):
     latency_sum = 0.0
     override_count = 0
 
+    total_contra_events = 0
+    critical_events = 0
+    warning_events = 0
+    unique_txns_with_contra = 0
+    critical_txns = set()
+    warning_txns = set()
+    inconsistent_auto_verified = 0
+
     for item in all_preds.values():
         res = item["result"]
         ev = item["evaluation"]
+        row_id = ev.row_id
 
         cat = res.prediction.category
         cat_counter[cat] += 1
@@ -70,8 +79,39 @@ def get_dataset_analytics(dataset_id: str):
         conf_sum += ev.calibrated_confidence
         latency_sum += res.latency_ms
 
-        for c in ev.contradictions:
-            contradiction_counter[c.code] += 1
+        contras = ev.contradictions or []
+        if contras:
+            unique_txns_with_contra += 1
+            has_crit = False
+            has_warn = False
+            for c in contras:
+                total_contra_events += 1
+                c_sev = getattr(c, "severity", None)
+                if isinstance(c_sev, str):
+                    sev_str = c_sev.upper()
+                elif hasattr(c_sev, "value"):
+                    sev_str = str(c_sev.value).upper()
+                else:
+                    sev_str = "WARNING"
+
+                if sev_str == "CRITICAL":
+                    critical_events += 1
+                    has_crit = True
+                elif sev_str == "WARNING":
+                    warning_events += 1
+                    has_warn = True
+
+                c_code = getattr(c, "code", None) or (c.get("code") if isinstance(c, dict) else "UNKNOWN")
+                contradiction_counter[c_code] += 1
+
+            if has_crit:
+                critical_txns.add(row_id)
+            if has_warn:
+                warning_txns.add(row_id)
+
+            # Consistency audit check: flag any contradiction that is marked AUTO_VERIFIED
+            if ev.triage_decision == TriageDecision.AUTO_VERIFIED or triage == TriageDecision.AUTO_VERIFIED.value:
+                inconsistent_auto_verified += 1
 
         if item.get("override") is not None:
             override_count += 1
@@ -140,6 +180,13 @@ def get_dataset_analytics(dataset_id: str):
         triage_decision_distribution=triage_dict,
         contradiction_counts=contradiction_dict,
         contradiction_breakdown=contradiction_dict,
+        total_contradiction_events=total_contra_events,
+        transactions_with_contradictions=unique_txns_with_contra,
+        critical_contradiction_events=critical_events,
+        warning_contradiction_events=warning_events,
+        critical_transactions_count=len(critical_txns),
+        warning_transactions_count=len(warning_txns),
+        inconsistent_auto_verified_count=inconsistent_auto_verified,
         has_ground_truth=has_ground_truth,
         evaluation_accuracy=eval_acc,
         evaluation_macro_f1=eval_macro_f1,

@@ -11,6 +11,7 @@ from app.ml.gemma.client import GemmaClassifier
 from app.ml.gemma.schemas import GemmaClassificationResult, GemmaVoucherPrediction
 from app.ml.guardrails.models import (
     ConfidenceTier,
+    ContradictionSeverity,
     GuardrailEvaluation,
     TriageDecision,
 )
@@ -98,6 +99,12 @@ class GuardrailsPipeline:
 
         if requires_second_pass:
             second_pass_applied = True
+            had_critical_contradiction = any(
+                getattr(c, "severity", None) == ContradictionSeverity.CRITICAL
+                or (hasattr(getattr(c, "severity", None), "value") and getattr(c, "severity").value == "CRITICAL")
+                or str(getattr(c, "severity", "")).upper() == "CRITICAL"
+                for c in contradictions
+            )
             second_pass_cat, second_pass_justification = SecondPassReasoningEngine.arbitrate(
                 txn=txn,
                 primary_category=primary_cat,
@@ -132,6 +139,15 @@ class GuardrailsPipeline:
                     signals_profile=profile,
                     retriever_top_candidates=candidates,
                 )
+
+                # An initial critical contradiction that was resolved by second pass MUST be verified by a human auditor
+                if had_critical_contradiction and triage == TriageDecision.AUTO_VERIFIED:
+                    triage = TriageDecision.FLAGGED_FOR_REVIEW
+                    tier = ConfidenceTier.MEDIUM
+                    revised_notes.append(
+                        "Initial critical contradiction arbitrated by second pass; held in FLAGGED_FOR_REVIEW for qualified auditor verification."
+                    )
+
                 contradictions = revised_contradictions
                 audit_notes.extend(revised_notes)
 

@@ -245,6 +245,13 @@ export interface DatasetAnalyticsResponse {
   triage_distribution?: Record<string, number>;
   contradiction_breakdown?: Record<string, number>;
   contradiction_counts?: Record<string, number>;
+  total_contradiction_events?: number;
+  transactions_with_contradictions?: number;
+  critical_contradiction_events?: number;
+  warning_contradiction_events?: number;
+  critical_transactions_count?: number;
+  warning_transactions_count?: number;
+  inconsistent_auto_verified_count?: number;
   has_ground_truth?: boolean;
   evaluation_accuracy?: number | null;
   evaluation_macro_f1?: number | null;
