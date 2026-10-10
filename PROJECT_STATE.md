@@ -21,7 +21,7 @@
 | 7 | Confidence & Guardrails | COMPLETE | `bef4e46` | Verified (`origin/main`) | Approved |
 | 8 | Backend REST API | COMPLETE | `369f67f` | Verified (`origin/main`) | Approved |
 | 9 | Connected Dashboard | COMPLETE | `937ed96` | Verified (`origin/main`) | Approved |
-| **10** | **Robustness & Evaluation** | **COMPLETE** | *(pending commit)* | Verified (`origin/main`) | **Current Phase Gate** |
+| **10** | **Robustness & Evaluation** | **COMPLETE** | `572c01a` | Verified (`origin/main`) | **Current Phase Gate** |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
 
 
