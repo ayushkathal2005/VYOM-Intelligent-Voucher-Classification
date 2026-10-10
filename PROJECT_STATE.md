@@ -2,8 +2,8 @@
 
 > **Authoritative Phase-Gated Tracking Document**
 > Last Updated: 2026-10-10
-> Current Authorized Phase: **Phase 7 — Confidence Scoring & Guardrails Pipeline**
-> Status: **COMPLETE** (Awaiting user review at Phase 7 Gate)
+> Current Authorized Phase: **Phase 8 — Backend REST API**
+> Status: **COMPLETE** (Awaiting user review at Phase 8 Gate)
 
 ---
 
@@ -18,8 +18,8 @@
 | 4 | Baseline Classifier | COMPLETE | `89e42c6` | Verified (`origin/main`) | Approved |
 | 5 | Gemma 4 Integration | COMPLETE | `cb1303c` | Verified (`origin/main`) | Approved |
 | 6 | Accounting Signals & Semantic Retrieval | COMPLETE | `4935175` | Verified (`origin/main`) | Approved |
-| **7** | **Confidence & Guardrails** | **COMPLETE** | `bef4e46` | Verified (`origin/main`) | **Current Phase Gate** |
-| 8 | Backend API | PENDING | — | — | Not Authorized |
+| 7 | Confidence & Guardrails | COMPLETE | `bef4e46` | Verified (`origin/main`) | Approved |
+| **8** | **Backend REST API** | **COMPLETE** | Pending | Pending (`origin/main`) | **Current Phase Gate** |
 | 9 | Connected Dashboard | PENDING | — | — | Not Authorized |
 | 10 | Robustness & Evaluation | PENDING | — | — | Not Authorized |
 | 11 | Release & Deployment | PENDING | — | — | Not Authorized |
@@ -245,10 +245,43 @@
 
 ---
 
-## 12. Next Permitted Action
+## 12. Phase 8 — Backend REST API Summary
 
-Upon user authorization of the Phase 7 report:
-Proceed to **Phase 8 — Backend REST API**.
+- **Objective**: Expose production-grade FastAPI REST endpoints covering dataset upload, tabular schema discovery, real-time and background batch classification, multi-dimensional review triage queries, human auditor overrides, analytics rollups, and audit-grade XLSX/CSV export.
+- **REST Architecture & Route Modularization (`backend/app/api/`)**:
+  - `Dataset Ingestion & Schema Discovery` (`POST /api/v1/datasets/upload`, `GET /api/v1/datasets`, `GET /api/v1/datasets/{id}/preview`):
+    - Supports `.xlsx`, `.xls`, `.csv` streaming upload with multipart parsing (`python-multipart`).
+    - Discovers detected headers, mapped canonical fields, unmapped columns, and schema warnings.
+    - Provides paginated raw row inspection for frontend verification.
+  - `Classification Engine` (`POST /api/v1/classify/single`, `POST /api/v1/classify/batch`, `GET /api/v1/classify/batch/{id}/status`):
+    - Single transaction on-demand inference with complete guardrail evaluation (signals + retrieval + Gemma 4 + contradictions + calibration).
+    - Asynchronous batch execution via FastAPI `BackgroundTasks` with real-time status and percentage progress tracking.
+  - `Predictions & Review Queue Triage` (`GET /api/v1/datasets/{id}/predictions`, `GET /api/v1/datasets/{id}/predictions/{row_id}`):
+    - Paginated query interface with filtering by triage decision (`AUTO_VERIFIED`, `FLAGGED_FOR_REVIEW`, `CRITICAL_REJECTION`), confidence tier (`HIGH`, `MEDIUM`, `LOW`), predicted category, and free-text search across counterparties and doc numbers.
+  - `Authoritative Human Reviewer Override` (`POST /api/v1/datasets/{id}/predictions/{row_id}/override`):
+    - Validates target category against the 27 authoritative voucher labels.
+    - Records auditor identity, reason, previous category, and timestamp.
+    - Promotes triage status to `AUTO_VERIFIED` with high confidence and persistent audit notes.
+  - `Analytics & Distribution Intelligence` (`GET /api/v1/datasets/{id}/analytics`):
+    - Aggregate metrics: total transactions, processed rows, auto-verified / review / rejection percentages, mean confidence, category frequency distribution, confidence tier counts, and contradiction breakdown.
+  - `Audited Export Streaming` (`GET /api/v1/datasets/{id}/export?format=xlsx|csv`):
+    - Exports all raw transaction columns augmented with `VYOM_PREDICTED_CATEGORY`, `VYOM_CONFIDENCE_SCORE`, `VYOM_CONFIDENCE_TIER`, `VYOM_TRIAGE_DECISION`, `VYOM_CONTRADICTIONS_DETECTED`, `VYOM_IS_OVERRIDDEN`, `VYOM_OVERRIDDEN_CATEGORY`, and `VYOM_REASONING`.
+  - `Taxonomy & Knowledge Cards` (`GET /api/v1/taxonomy`, `GET /api/v1/taxonomy/{card_id}`):
+    - Full inspection of the 27 accounting voucher profiles with typical debit/credit ledgers, flow patterns, prefixes, and disambiguation rules.
+- **Thread-Safe In-Memory State Store (`backend/app/api/storage.py`)**:
+  - `DatasetStorage` handles thread-safe concurrent access across uploads, background workers, queries, and reviewer overrides with UTC timestamping.
+- **Integration Test Suite (`backend/tests/test_api.py`)**:
+  - 9 comprehensive integration tests exercising all routes (upload, preview, single classify, batch classify, status, predictions query, human override, analytics rollup, export streaming, taxonomy cards).
+  - Full repository test suite: **75 passed, 0 failed (100% green)**.
+  - Frontend production build (`npm run build`): Verified clean Next.js 16.4.0 compilation.
+
+---
+
+## 13. Next Permitted Action
+
+Upon user authorization of the Phase 8 report:
+Proceed to **Phase 9 — Connected Dashboard & Interactive Review Interface** (Next.js 16 dark crystal frontend connected to live `/api/v1` backend endpoints).
+
 
 
 

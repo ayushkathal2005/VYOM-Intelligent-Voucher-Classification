@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.api import api_router
 
 app = FastAPI(
     title="VYOM+ Transaction Intelligence API",
@@ -18,6 +19,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount v1 REST API routes
+app.include_router(api_router)
 
 
 @app.get("/")
